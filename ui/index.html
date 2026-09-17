@@ -1,0 +1,1190 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Postal Prime</title>
+<style>
+    :root {
+        --navy: #1a4fb4;
+        --navy-2: #123a86;
+        --orange: #e21f2b;
+        --orange-dark: #b8161f;
+        --bg: #ffffff;
+        --text: #0f1111;
+        --text-dim: #565959;
+        --surface: #f4f4f4;
+        --elevated: #ffffff;
+        --hairline: #e3e6e6;
+        --green: #067d62;
+        --red: #e21f2b;
+        --star: #f2a900;
+        --link: #1a4fb4;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+        margin: 0; padding: 0; width: 100%; height: 100%;
+        visibility: hidden;
+        background: transparent; color: var(--text);
+        font-family: "Amazon Ember", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        overflow: hidden;
+    }
+    #app { position: absolute; inset: 0; display: flex; justify-content: center; background: var(--bg); }
+    #phone-col {
+        position: relative;
+        width: 100%; max-width: 430px; height: 100%; max-height: 932px;
+        display: flex; flex-direction: column; background: var(--bg);
+        overflow: hidden;
+    }
+    .safe-top { height: 34px; flex-shrink: 0; background: #fff; }
+    #screen { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* header */
+    .app-header { flex-shrink: 0; background: var(--navy); color: #fff; }
+    .header-row1 {
+        display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fff;
+        border-bottom: 3px solid var(--orange);
+    }
+    .brand { display: flex; align-items: center; gap: 6px; font-size: 19px; font-weight: 800; letter-spacing: -0.01em; color: var(--navy); }
+    .brand-logo { height: 30px; display: block; }
+    .header-icons { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+    .icon-btn { position: relative; background: none; border: none; color: var(--navy); font-size: 20px; cursor: pointer; padding: 0; }
+    .icon-btn .badge {
+        position: absolute; top: -7px; right: -9px; background: var(--orange); color: #fff;
+        font-size: 10px; font-weight: 800; border-radius: 999px; min-width: 16px; height: 16px;
+        display: flex; align-items: center; justify-content: center; padding: 0 3px;
+    }
+    .deliver-row {
+        padding: 8px 14px; display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #d5d9d9;
+    }
+    .deliver-row b { color: #fff; font-weight: 700; }
+    .search-row { padding: 0 14px 12px; }
+    .searchbar {
+        background: #fff; border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; gap: 8px;
+    }
+    .searchbar input {
+        border: none; outline: none; flex: 1; font-size: 14.5px; font-family: inherit; color: var(--text);
+        background: none;
+    }
+    .searchbar .mag { color: var(--text-dim); font-size: 15px; }
+    .chips { display: flex; gap: 8px; padding: 0 14px 12px; overflow-x: auto; -ms-overflow-style: none; scrollbar-width: none; }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip {
+        flex-shrink: 0; padding: 6px 14px; border-radius: 6px; background: rgba(255,255,255,0.16);
+        font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer; border: none; white-space: nowrap;
+    }
+    .chip.active { background: var(--orange); color: #fff; }
+
+    .scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 0 90px; -ms-overflow-style: none; scrollbar-width: none; background: var(--surface); }
+    .scroll::-webkit-scrollbar { display: none; }
+
+    .promo {
+        margin: 10px 12px; border-radius: 10px; padding: 16px;
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color: #fff;
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .promo .t { font-size: 15px; font-weight: 800; }
+    .promo .s { font-size: 12px; color: #ffd8d8; margin-top: 3px; font-weight: 700; }
+    .promo .em { font-size: 30px; }
+
+    .section-title {
+        font-size: 15px; font-weight: 800; margin: 14px 12px 8px; display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 12px; }
+    .card {
+        background: var(--elevated); border-radius: 8px; padding: 10px; cursor: pointer;
+        display: flex; flex-direction: column; border: 1px solid var(--hairline);
+    }
+    .card .icon { font-size: 40px; text-align: center; margin: 6px 0 8px; }
+    .card .label { font-size: 12.5px; font-weight: 500; line-height: 1.3; min-height: 32px; color: var(--text); }
+    .card .stars { color: var(--star); font-size: 11px; margin-top: 4px; }
+    .card .stars span { color: var(--text-dim); margin-left: 3px; }
+    .card .price-row { display: flex; align-items: baseline; gap: 3px; margin-top: 5px; }
+    .card .price-row .sym { font-size: 11px; position: relative; top: -5px; }
+    .card .price-row .amt { font-size: 18px; font-weight: 700; }
+    .card .prime-badge { font-size: 10px; color: var(--link); font-weight: 700; margin-top: 2px; }
+    .card .add-btn {
+        margin-top: 8px; border: 1px solid #a6a6a6; border-radius: 20px; padding: 7px; background: #ffd814;
+        color: #0f1111; font-weight: 600; font-size: 12.5px; cursor: pointer;
+    }
+    .card .add-btn.in-cart { background: #d5f5ec; border-color: var(--green); color: var(--green); }
+    .card { position: relative; }
+    .heart-btn {
+        position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.85); border: none;
+        border-radius: 999px; width: 26px; height: 26px; font-size: 14px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; color: var(--text-dim); z-index: 1;
+    }
+    .heart-btn.saved { color: var(--orange); }
+    .sheet .heart-btn { position: absolute; top: 18px; left: 18px; }
+
+    .list-pad { padding: 10px 12px 0; }
+    .cart-item {
+        display: flex; align-items: center; gap: 12px; background: var(--elevated); border-radius: 8px;
+        padding: 12px; margin-bottom: 10px; border: 1px solid var(--hairline);
+    }
+    .cart-item .icon { font-size: 30px; width: 42px; text-align: center; }
+    .cart-item .info { flex: 1; }
+    .cart-item .name { font-size: 14px; font-weight: 600; }
+    .cart-item .unit { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+    .cart-item .unit .prime { color: var(--link); font-weight: 700; }
+    .qty-stepper { display: flex; align-items: center; gap: 10px; border: 1px solid var(--hairline); border-radius: 20px; padding: 3px 4px; }
+    .qty-stepper button {
+        width: 24px; height: 24px; border-radius: 999px; border: none; background: var(--surface);
+        color: var(--text); font-size: 15px; font-weight: 700; cursor: pointer; line-height: 1;
+    }
+    .qty-stepper span { font-size: 13.5px; font-weight: 700; min-width: 14px; text-align: center; font-variant-numeric: tabular-nums; }
+
+    .summary-card { background: var(--elevated); border: 1px solid var(--hairline); border-radius: 8px; padding: 16px; margin: 12px; }
+    .summary-row { display: flex; justify-content: space-between; font-size: 13.5px; margin-bottom: 8px; color: var(--text-dim); }
+    .summary-row.total { color: var(--text); font-weight: 800; font-size: 16px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--hairline); }
+
+    .empty-state { text-align: center; margin-top: 70px; color: var(--text-dim); padding: 0 30px; }
+
+    .you-header { padding: 20px 16px 6px; display: flex; align-items: center; gap: 12px; }
+    .you-avatar {
+        width: 52px; height: 52px; border-radius: 999px; background: var(--navy); color: #fff;
+        display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; flex-shrink: 0;
+    }
+    .you-header .name { font-size: 17px; font-weight: 800; }
+    .you-header .sub { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; }
+    .you-stats { display: flex; gap: 10px; padding: 12px 16px; }
+    .you-stat { flex: 1; background: var(--elevated); border: 1px solid var(--hairline); border-radius: 10px; padding: 12px; text-align: center; }
+    .you-stat .n { font-size: 19px; font-weight: 800; color: var(--navy); font-variant-numeric: tabular-nums; }
+    .you-stat .l { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+    .you-list { margin: 8px 12px 0; background: var(--elevated); border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; }
+    .you-row {
+        display: flex; align-items: center; justify-content: space-between; padding: 13px 16px;
+        border-bottom: 1px solid var(--hairline); font-size: 14px; cursor: pointer; background: none; width: 100%;
+        border-left: none; border-right: none; border-top: none; text-align: left; color: var(--text);
+    }
+    .you-row:last-child { border-bottom: none; }
+    .you-row .chev { color: var(--text-dim); }
+    .you-row-badge {
+        background: var(--orange); color: #fff; font-size: 10.5px; font-weight: 700;
+        border-radius: 999px; padding: 2px 8px; margin-left: 6px;
+    }
+
+    .plus-card {
+        margin: 4px 12px 12px; border-radius: 12px; padding: 16px;
+        background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 100%); color: #fff;
+    }
+    .plus-card.active { background: linear-gradient(135deg, var(--green) 0%, #045743 100%); }
+    .plus-card .plus-title { font-size: 15px; font-weight: 800; }
+    .plus-card .plus-sub { font-size: 12.5px; color: rgba(255,255,255,0.85); margin-top: 4px; line-height: 1.4; }
+    .plus-card .plus-btn {
+        margin-top: 12px; width: 100%; border: none; border-radius: 20px; padding: 11px; font-size: 13.5px;
+        font-weight: 700; background: #fff; color: var(--navy); cursor: pointer;
+    }
+    .plus-card.active .plus-btn { color: var(--green); }
+    .plus-card .plus-btn:disabled { opacity: 0.6; cursor: default; }
+    .plus-nudge {
+        margin-top: 10px; font-size: 12px; color: var(--link); font-weight: 700; text-align: center; cursor: pointer;
+    }
+    .empty-state .big { font-size: 42px; margin-bottom: 10px; }
+    .loading { text-align: center; margin-top: 60px; color: var(--text-dim); font-size: 14px; }
+
+    .stock-note { font-size: 11.5px; font-weight: 700; margin-top: 2px; }
+    .stock-note.low { color: var(--orange-dark); }
+    .stock-note.out { color: var(--red); }
+    .add-btn:disabled, .primary-btn.disabled-look { opacity: 0.45; cursor: default; }
+
+    .gift-toggle-row {
+        display: flex; align-items: center; justify-content: space-between; background: var(--elevated);
+        border: 1px solid var(--hairline); border-radius: 10px; padding: 12px 14px; margin: 0 12px 10px;
+    }
+    .gift-toggle-row .label { font-size: 13.5px; font-weight: 700; }
+    .gift-toggle-row .sub { font-size: 11.5px; color: var(--text-dim); margin-top: 2px; }
+    .switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
+    .switch input { display: none; }
+    .switch .track {
+        position: absolute; inset: 0; background: var(--hairline); border-radius: 999px; transition: background 150ms;
+    }
+    .switch .track::after {
+        content: ''; position: absolute; width: 18px; height: 18px; border-radius: 999px; background: #fff;
+        top: 3px; left: 3px; transition: left 150ms; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    .switch input:checked + .track { background: var(--navy); }
+    .switch input:checked + .track::after { left: 21px; }
+    .gift-name-input {
+        margin: 0 12px 12px; padding: 12px 14px; border: 1px solid var(--hairline); border-radius: 10px;
+        font-size: 14px; width: calc(100% - 24px); background: var(--elevated); color: var(--text);
+    }
+    .gifted-note {
+        margin-top: 10px; font-size: 12px; font-weight: 700; color: var(--navy); background: rgba(26,79,180,0.08);
+        border-radius: 8px; padding: 8px 10px;
+    }
+    .rate-btn.reorder-btn { color: var(--navy); }
+
+    .primary-btn {
+        width: 100%; border: 1px solid #a88734; border-radius: 20px; padding: 13px; font-size: 15px; font-weight: 700;
+        background: linear-gradient(180deg,#f7dfa5,#f0c14b); color: #0f1111; cursor: pointer; margin-top: 4px;
+    }
+    .primary-btn:disabled { opacity: 0.4; cursor: default; }
+    .ghost-btn {
+        width: 100%; border: 1px solid var(--hairline); border-radius: 20px; padding: 12px; font-size: 14px; font-weight: 600;
+        background: var(--elevated); color: var(--text); cursor: pointer; margin-top: 8px;
+    }
+
+    .locker-opt {
+        display: flex; align-items: center; justify-content: space-between; width: 100%; text-align: left;
+        background: var(--elevated); border: 1px solid var(--hairline); border-radius: 8px; padding: 14px 16px;
+        margin-bottom: 10px; cursor: pointer; color: var(--text);
+    }
+    .locker-opt.selected { border-color: var(--orange); border-width: 2px; }
+    .locker-opt .name { font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .locker-opt .dist { font-size: 12.5px; color: var(--text-dim); margin-top: 3px; }
+    .locker-opt .radio {
+        width: 20px; height: 20px; border-radius: 999px; border: 2px solid #a6a6a6; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .locker-opt.selected .radio { border-color: var(--orange); }
+    .locker-opt.selected .radio::after { content: ''; width: 10px; height: 10px; border-radius: 999px; background: var(--orange); }
+    .locker-opt .cap { font-size: 11px; font-weight: 700; margin-top: 4px; }
+    .locker-opt .cap.quiet { color: var(--green); }
+    .locker-opt .cap.moderate { color: var(--orange-dark); }
+    .locker-opt .cap.busy { color: var(--red); }
+
+    .order-card {
+        background: var(--elevated); border: 1px solid var(--hairline); border-radius: 8px;
+        padding: 16px; margin: 0 12px 12px;
+    }
+    .order-card .row1 { display: flex; justify-content: space-between; align-items: flex-start; }
+    .order-card .items { font-size: 14px; font-weight: 700; }
+    .order-card .locker { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+    .status-pill {
+        font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+    }
+    .status-pill.preparing { background: rgba(226,31,43,0.10); color: var(--orange-dark); }
+    .status-pill.ready { background: rgba(6,125,98,0.12); color: var(--green); }
+    .status-pill.collected { background: var(--surface); color: var(--text-dim); }
+    .status-pill.expired { background: rgba(226,31,43,0.10); color: var(--red); }
+    .status-pill.cancelled { background: var(--surface); color: var(--text-dim); }
+    .cancel-btn {
+        margin-top: 12px; width: 100%; border: 1px solid var(--hairline); border-radius: 20px; padding: 10px;
+        font-size: 12.5px; font-weight: 700; background: var(--elevated); color: var(--orange-dark); cursor: pointer;
+    }
+    .progress-track { height: 6px; border-radius: 999px; background: var(--surface); margin-top: 12px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--orange); border-radius: 999px; transition: width 300ms linear; }
+    .code-box {
+        margin-top: 12px; background: var(--surface); border-radius: 8px; padding: 12px 14px;
+    }
+    .code-box .code { font-size: 22px; font-weight: 800; letter-spacing: 0.15em; font-variant-numeric: tabular-nums; }
+    .code-box .label { font-size: 10.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+    .code-box .hint { font-size: 11.5px; color: var(--text-dim); margin-top: 6px; line-height: 1.4; }
+    .expired-note { margin-top: 12px; font-size: 12px; color: var(--text-dim); }
+
+    .tabbar {
+        flex-shrink: 0; display: flex; border-top: 1px solid var(--hairline); background: var(--elevated);
+        padding-bottom: 22px;
+    }
+    .tab {
+        flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 7px 0 2px;
+        background: none; border: none; color: var(--text-dim); font-size: 10px; font-weight: 600; cursor: pointer;
+        position: relative;
+    }
+    .tab.active { color: var(--navy); }
+    .tab.active .ic { color: var(--orange-dark); }
+    .tab .ic { color: var(--text-dim); display: flex; }
+    .tab .ic svg { width: 19px; height: 19px; }
+    .tab .badge {
+        position: absolute; top: 4px; right: calc(50% - 18px); background: var(--red); color: #fff;
+        font-size: 10px; font-weight: 800; border-radius: 999px; min-width: 16px; height: 16px;
+        display: flex; align-items: center; justify-content: center; padding: 0 3px;
+    }
+
+    .sheet-backdrop {
+        position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: flex-end;
+        justify-content: center; z-index: 40;
+    }
+    .sheet {
+        width: 100%; background: var(--elevated); border-radius: 16px 16px 0 0; padding: 22px 20px 28px;
+        max-height: 82vh; overflow-y: auto;
+    }
+    .sheet .icon-big { font-size: 56px; text-align: center; margin-bottom: 10px; }
+    .sheet .name { font-size: 18px; font-weight: 700; text-align: center; }
+    .sheet .stars { text-align: center; color: var(--star); font-size: 13px; margin-top: 6px; }
+    .sheet .stars span { color: var(--text-dim); margin-left: 4px; }
+    .sheet .price { font-size: 22px; font-weight: 700; text-align: center; margin-top: 8px; }
+    .sheet .price .sym { font-size: 13px; position: relative; top: -8px; }
+    .sheet .prime-line { text-align: center; font-size: 12px; color: var(--link); font-weight: 700; margin-top: 4px; }
+    .sheet .qty-row { display: flex; align-items: center; justify-content: center; gap: 20px; margin-top: 20px; }
+    .sheet .qty-row .qty-stepper button { width: 34px; height: 34px; font-size: 18px; }
+    .sheet .qty-row span { font-size: 18px; }
+    .review-prompts { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .rate-btn {
+        align-self: flex-start; border: 1px solid var(--orange); background: #fff2f2; color: var(--orange-dark);
+        border-radius: 8px; padding: 7px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+    }
+    .review-done { font-size: 12px; color: var(--green); font-weight: 700; }
+    .my-review { background: #fff2f2; border: 1px solid #ffd6d6; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+    .my-review .rev-badge {
+        display: inline-block; background: var(--orange); color: #fff; font-size: 10.5px; font-weight: 700;
+        border-radius: 999px; padding: 2px 8px; margin-bottom: 6px;
+    }
+    .review-composer .rc-title { font-size: 16px; font-weight: 700; text-align: center; margin-bottom: 4px; }
+    .review-composer .rc-item { font-size: 13px; color: var(--text-dim); text-align: center; margin-bottom: 14px; }
+    .review-composer .rc-stars { display: flex; justify-content: center; gap: 6px; font-size: 30px; margin-bottom: 16px; }
+    .review-composer .rc-stars span { cursor: pointer; color: var(--hairline); }
+    .review-composer .rc-stars span.filled { color: var(--star); }
+    .review-composer input, .review-composer textarea {
+        width: 100%; border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 12px; font-size: 13.5px;
+        font-family: inherit; margin-bottom: 12px; background: var(--elevated); color: var(--text); box-sizing: border-box;
+    }
+    .review-composer textarea { min-height: 80px; resize: vertical; }
+    .reviews-section { margin-top: 22px; border-top: 1px solid var(--hairline); padding-top: 16px; }
+    .reviews-section .rev-heading { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+    .reviews-section .rev-summary { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-dim); margin-bottom: 14px; }
+    .reviews-section .rev-summary .stars { color: var(--star); font-size: 14px; }
+    .reviews-section .rev-loading { font-size: 13px; color: var(--text-dim); }
+    .review-item { padding: 12px 0; border-bottom: 1px solid var(--hairline); }
+    .review-item:last-child { border-bottom: none; }
+    .review-item .rev-top { display: flex; align-items: center; gap: 8px; }
+    .review-item .rev-avatar {
+        width: 24px; height: 24px; border-radius: 999px; background: var(--surface); color: var(--text-dim);
+        display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+    }
+    .review-item .rev-name { font-size: 13px; font-weight: 600; }
+    .review-item .rev-stars { color: var(--star); font-size: 12px; margin-top: 4px; }
+    .review-item .rev-verified { color: var(--green); font-size: 11px; font-weight: 700; margin-left: 6px; }
+    .review-item .rev-title { font-size: 13px; font-weight: 700; margin-top: 6px; }
+    .review-item .rev-body { font-size: 13px; color: var(--text); margin-top: 3px; line-height: 1.45; }
+    .review-item .rev-meta { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+    .close-x {
+        position: absolute; top: 14px; right: 16px; border: none; background: var(--surface); color: var(--text);
+        width: 30px; height: 30px; border-radius: 999px; font-size: 15px; cursor: pointer;
+    }
+
+    .toast {
+        position: absolute; left: 16px; right: 16px; bottom: 90px; background: #0f1111; color: #fff;
+        border-radius: 10px; padding: 13px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        font-size: 13.5px; font-weight: 600; z-index: 50; text-align: center;
+    }
+</style>
+</head>
+<body>
+<div id="app">
+    <div id="phone-col">
+        <div class="safe-top"></div>
+        <div id="header"></div>
+        <div id="screen"></div>
+        <div class="tabbar" id="tabbar"></div>
+    </div>
+</div>
+<script>
+(function () {
+    var RESOURCE = 'as-postalprime';
+    var state = null;
+    var loaded = false;
+
+    var tab = 'home';
+    var activeCategory = 'all';
+    var searchQuery = '';
+    var cart = {};
+    var detailItem = null;
+    var checkoutLocker = null;
+    var toastMsg = null;
+    var toastTimer = null;
+    var reviewsCache = {};
+    var reviewDraft = null;
+    var busy = false;
+    var giftMode = false;
+    var giftName = '';
+    var wishlist = [];
+
+    function post(endpoint, data) {
+        return fetch('https://' + RESOURCE + '/' + endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+            body: JSON.stringify(data || {}),
+        }).then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: 'No response' }; });
+    }
+
+    function fmt(n) {
+        var parts = n.toFixed(2).split('.');
+        return { whole: parts[0], cents: parts[1] };
+    }
+    function stars(n) {
+        var s = '';
+        var rounded = Math.round(n);
+        for (var i = 0; i < 5; i++) s += i < rounded ? '★' : '☆';
+        return s;
+    }
+    function fmtReviewCount(n) {
+        n = Math.round(n);
+        if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+        return String(n);
+    }
+    function fmtDate(ts) {
+        var d = new Date(ts);
+        return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function catalogItem(id) {
+        if (!state) return null;
+        return state.catalog.find(function (c) { return c.id === id; });
+    }
+    function lockerById(id) {
+        if (!state) return null;
+        return state.lockers.find(function (l) { return l.id === id; });
+    }
+
+    // item.stock is undefined/null for an unlimited item - only a real number means it's capped.
+    function outOfStock(item) {
+        return typeof item.stock === 'number' && item.stock <= 0;
+    }
+    function stockNote(item) {
+        if (typeof item.stock !== 'number') return '';
+        if (item.stock <= 0) return '<div class="stock-note out">Out of stock</div>';
+        if (item.stock <= 5) return '<div class="stock-note low">Only ' + item.stock + ' left</div>';
+        return '';
+    }
+
+    function cartCount() {
+        var n = 0;
+        for (var k in cart) n += cart[k];
+        return n;
+    }
+    function cartTotal() {
+        var t = 0;
+        for (var k in cart) {
+            var item = catalogItem(k);
+            if (item) t += item.price * cart[k];
+        }
+        return t;
+    }
+    function pendingReadyCount() {
+        if (!state) return 0;
+        return state.orders.filter(function (o) { return o.ready && !o.collected && !o.expired; }).length;
+    }
+    function isPlus() {
+        return !!(state && state.plus && state.plus.active);
+    }
+    function deliveryFee() {
+        return (state && state.plusConfig) ? state.plusConfig.deliveryFee : 0;
+    }
+    function cartGrandTotal() {
+        return cartTotal() + (isPlus() ? 0 : deliveryFee());
+    }
+    function hasPreparingOrder() {
+        if (!state) return false;
+        return state.orders.some(function (o) { return !o.ready && !o.collected && !o.expired; });
+    }
+    function inWishlist(id) {
+        return wishlist.indexOf(id) !== -1;
+    }
+    function toggleWishlist(id) {
+        var was = inWishlist(id);
+        wishlist = was ? wishlist.filter(function (x) { return x !== id; }) : wishlist.concat([id]);
+        render();
+        post('as-postalprime/toggleWishlist', { itemId: id }).then(function (res) {
+            if (res && res.ok && res.wishlist) { wishlist = res.wishlist; render(); }
+        });
+    }
+    // How busy a locker is, from the count of currently-open/ready doors the server reports.
+    function lockerCapInfo(l) {
+        if (typeof l.doorsUsed !== 'number' || !l.doorsTotal) return null;
+        var pct = l.doorsUsed / l.doorsTotal;
+        var cls = pct === 0 ? 'quiet' : (pct < 0.5 ? 'moderate' : 'busy');
+        var txt = pct === 0 ? 'Quiet' : (pct < 0.5 ? 'Some activity' : 'Busy');
+        return { cls: cls, txt: txt + ' · ' + l.doorsUsed + '/' + l.doorsTotal + ' lockers in use' };
+    }
+
+    function showToast(msg) {
+        toastMsg = msg;
+        render();
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toastMsg = null; render(); }, 2600);
+    }
+
+    function addToCart(id, qty) {
+        cart[id] = (cart[id] || 0) + qty;
+        showToast('Added to Cart');
+    }
+    function setQty(id, qty) {
+        if (qty <= 0) { delete cart[id]; } else { cart[id] = qty; }
+        render();
+    }
+
+    function refresh() {
+        post('as-postalprime/state').then(function (res) {
+            state = res;
+            if (res && res.wishlist) wishlist = res.wishlist;
+            loaded = true;
+            render();
+        });
+    }
+
+    function cancelOrder() {
+        if (busy) return;
+        busy = true; render();
+        post('as-postalprime/cancelOrder').then(function (res) {
+            busy = false;
+            if (!res || !res.ok) {
+                showToast((res && res.error) || 'Failed to cancel order');
+                render();
+                return;
+            }
+            state.orders = res.orders;
+            render();
+            showToast('Order cancelled and refunded');
+        });
+    }
+
+    function placeOrder() {
+        if (!checkoutLocker || cartCount() === 0 || busy) return;
+        if (giftMode && !giftName.trim()) return;
+        busy = true; render();
+        post('as-postalprime/checkout', {
+            lockerId: checkoutLocker, items: cart,
+            giftTo: giftMode ? giftName.trim() : undefined,
+        }).then(function (res) {
+            busy = false;
+            if (!res || !res.ok) {
+                showToast((res && res.error) || 'Checkout failed');
+                render();
+                return;
+            }
+            state.orders = res.orders;
+            cart = {};
+            checkoutLocker = null;
+            var wasGift = res.gifted;
+            var giftedTo = res.giftedTo;
+            giftMode = false;
+            giftName = '';
+            tab = wasGift ? 'home' : 'orders';
+            render();
+            showToast(wasGift ? ('Gift sent to ' + giftedTo + '!') : 'Order placed! We\'ll text you when it\'s ready.');
+        });
+    }
+
+    // Re-adds every item from a past order to the cart in one go (skipping any that no longer
+    // exist in the catalog) and jumps straight to Cart, so a repeat purchase doesn't mean
+    // re-browsing Home from scratch.
+    function reorder(orderId) {
+        var order = ((state && state.orders) || []).find(function (o) { return o.id === orderId; });
+        if (!order) return;
+        var added = 0, skipped = 0;
+        order.items.forEach(function (it) {
+            if (catalogItem(it.id)) { cart[it.id] = (cart[it.id] || 0) + it.qty; added++; }
+            else skipped++;
+        });
+        tab = 'cart';
+        render();
+        if (added === 0) showToast('None of those items are available anymore');
+        else showToast(skipped ? 'Added to cart (' + skipped + ' item no longer available)' : 'Added to cart');
+    }
+
+    function fetchReviews(itemId) {
+        reviewsCache[itemId] = Object.assign({}, reviewsCache[itemId], { loading: true });
+        post('as-postalprime/reviews', { itemId: itemId }).then(function (res) {
+            if (res && res.ok) {
+                reviewsCache[itemId] = {
+                    loading: false, rating: res.rating, reviewCount: res.reviewCount,
+                    mine: res.mine, reviews: res.reviews, canReview: res.canReview,
+                };
+            } else {
+                reviewsCache[itemId] = { loading: false, error: true };
+            }
+            render();
+        });
+    }
+
+    function submitReview() {
+        if (!reviewDraft || busy) return;
+        busy = true; render();
+        post('as-postalprime/submitReview', {
+            itemId: reviewDraft.itemId, rating: reviewDraft.rating,
+            title: reviewDraft.title, body: reviewDraft.body,
+        }).then(function (res) {
+            busy = false;
+            if (!res || !res.ok) {
+                showToast((res && res.error) || 'Failed to submit review');
+                render();
+                return;
+            }
+            var itemId = reviewDraft.itemId;
+            reviewDraft = null;
+            showToast('Thanks for your review!');
+            fetchReviews(itemId);
+            refresh();
+        });
+    }
+
+    function renderHeader() {
+        if (tab === 'checkout') {
+            return '<div class="app-header"><div class="header-row1">' +
+                '<button class="icon-btn" id="backToCartFromHeader">←</button>' +
+                '<div class="brand" style="font-size:16px;">Checkout</div>' +
+                '</div></div>';
+        }
+        var html = '<div class="app-header">';
+        html += '<div class="header-row1">' +
+            '<div class="brand"><img class="brand-logo" src="logo.png" alt="Postal Prime"></div>' +
+            '<div class="header-icons">' +
+            '<button class="icon-btn" data-tab="cart">🛒' + (cartCount() ? '<span class="badge">' + cartCount() + '</span>' : '') + '</button>' +
+            '</div></div>';
+        if (tab === 'home') {
+            var nearest = state && state.lockers && state.lockers[0];
+            html += '<div class="deliver-row">📍 Nearest locker: <b>' + (nearest ? nearest.label : '—') + '</b></div>';
+            html += '<div class="search-row"><div class="searchbar">' +
+                '<span class="mag">🔍</span>' +
+                '<input id="searchInput" placeholder="Search Postal Prime" value="' + searchQuery.replace(/"/g, '&quot;') + '">' +
+                '</div></div>';
+            var cats = ((state && state.categories) || []).concat([{ id: 'wishlist', label: '❤️ Saved' }]);
+            html += '<div class="chips">' + cats.map(function (c) {
+                return '<button class="chip ' + (activeCategory === c.id ? 'active' : '') + '" data-cat="' + c.id + '">' + c.label + '</button>';
+            }).join('') + '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    var TAB_ICONS = {
+        home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9.5 20v-6h5v6"/></svg>',
+        cart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4" fill="currentColor" stroke="none"/><circle cx="18" cy="20" r="1.4" fill="currentColor" stroke="none"/><path d="M2.5 3h2.4l2.1 11.2a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 2-1.6L21 7H6"/></svg>',
+        orders: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5"/><path d="M12 12v9"/></svg>',
+        you: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20c1.2-4 4-6 7.5-6s6.3 2 7.5 6"/></svg>',
+    };
+
+    function renderTabbar() {
+        var tabs = [
+            { id: 'home', label: 'Home' },
+            { id: 'you', label: 'You' },
+        ];
+        return tabs.map(function (t) {
+            var active = tab === t.id;
+            return '<button class="tab ' + (active ? 'active' : '') + '" data-tab="' + t.id + '">' +
+                (t.badge ? '<span class="badge">' + t.badge + '</span>' : '') +
+                '<span class="ic">' + TAB_ICONS[t.id] + '</span><span>' + t.label + '</span></button>';
+        }).join('');
+    }
+
+    function renderHome() {
+        if (!state) return '';
+        var filtered = state.catalog.filter(function (item) {
+            var catOk = activeCategory === 'wishlist' ? inWishlist(item.id)
+                : (activeCategory === 'all' || item.cat === activeCategory);
+            var q = searchQuery.trim().toLowerCase();
+            var searchOk = !q || item.label.toLowerCase().indexOf(q) !== -1;
+            return catOk && searchOk;
+        });
+
+        var html = '';
+        if (isPlus()) {
+            html += '<div class="promo"><div><div class="t">You\'re a Plus member</div><div class="s">Free delivery + faster shipping</div></div><div class="em">✅</div></div>';
+        } else {
+            html += '<div class="promo" data-tab="you" style="cursor:pointer;"><div><div class="t">Go Postal Prime Plus</div><div class="s">Free delivery &amp; faster shipping - from $' + (state.plusConfig ? state.plusConfig.price : '') + '</div></div><div class="em">🚀</div></div>';
+        }
+        var catLabel = 'Recommended for you';
+        if (activeCategory === 'wishlist') catLabel = 'Saved for later';
+        else if (activeCategory !== 'all') {
+            var cat = state.categories.find(function (c) { return c.id === activeCategory; });
+            if (cat) catLabel = cat.label;
+        }
+        html += '<div class="section-title">' + catLabel + '</div>';
+        html += '<div class="grid">';
+        if (filtered.length === 0) {
+            html += activeCategory === 'wishlist'
+                ? '<div class="empty-state" style="grid-column:1/-1;margin-top:20px;"><div class="big">❤️</div>Nothing saved yet.<br>Tap the heart on any item to save it for later.</div>'
+                : '<div class="empty-state" style="grid-column:1/-1;margin-top:20px;"><div class="big">🔍</div>No results for "' + searchQuery + '".</div>';
+        }
+        filtered.forEach(function (item) {
+            var inCart = cart[item.id] > 0;
+            var p = fmt(item.price);
+            var oos = outOfStock(item);
+            var saved = inWishlist(item.id);
+            html += '<div class="card" data-detail="' + item.id + '">' +
+                '<button class="heart-btn ' + (saved ? 'saved' : '') + '" data-wishlist="' + item.id + '">' + (saved ? '❤️' : '🤍') + '</button>' +
+                '<div class="icon">' + item.icon + '</div>' +
+                '<div class="label">' + item.label + '</div>' +
+                '<div class="stars">' + stars(item.rating) + '<span>' + fmtReviewCount(item.reviews) + '</span></div>' +
+                '<div class="price-row"><span class="sym">$</span><span class="amt">' + p.whole + '</span><span class="sym">' + p.cents + '</span></div>' +
+                '<div class="prime-badge">' + (isPlus() ? '✓ Prime Plus FREE delivery' : '🚚 $' + deliveryFee().toFixed(2) + ' delivery (free with Plus)') + '</div>' +
+                stockNote(item) +
+                '<button class="add-btn ' + (inCart ? 'in-cart' : '') + '" data-quickadd="' + item.id + '" ' + (oos ? 'disabled' : '') + '>' +
+                (oos ? 'Out of stock' : (inCart ? cart[item.id] + ' in cart' : 'Add to Cart')) + '</button>' +
+                '</div>';
+        });
+        html += '</div>';
+        return html;
+    }
+
+    function renderCart() {
+        var html = '<div class="section-title" style="margin-top:14px;">Cart</div>';
+        var ids = Object.keys(cart);
+        if (ids.length === 0) {
+            html += '<div class="empty-state"><div class="big">🛒</div>Your Postal Prime cart is empty.<br>Head to Home to add something.</div>';
+        } else {
+            html += '<div class="list-pad">';
+            ids.forEach(function (id) {
+                var item = catalogItem(id);
+                if (!item) return;
+                var p = fmt(item.price);
+                html += '<div class="cart-item">' +
+                    '<div class="icon">' + item.icon + '</div>' +
+                    '<div class="info"><div class="name">' + item.label + '</div><div class="unit">$' + p.whole + '.' + p.cents + ' each · <span class="prime">Prime</span></div></div>' +
+                    '<div class="qty-stepper">' +
+                    '<button data-qty="' + id + '" data-delta="-1">−</button>' +
+                    '<span>' + cart[id] + '</span>' +
+                    '<button data-qty="' + id + '" data-delta="1">+</button>' +
+                    '</div></div>';
+            });
+            html += '</div>';
+            html += '<div class="summary-card">' +
+                '<div class="summary-row"><span>Subtotal (' + cartCount() + ' item' + (cartCount() === 1 ? '' : 's') + ')</span><span>$' + cartTotal().toFixed(2) + '</span></div>' +
+                '<div class="summary-row"><span>Delivery</span>' + (isPlus() ?
+                    '<span style="color:var(--green);font-weight:700;">FREE with Plus</span>' :
+                    '<span>$' + deliveryFee().toFixed(2) + '</span>') + '</div>' +
+                '<div class="summary-row total"><span>Order Total</span><span>$' + cartGrandTotal().toFixed(2) + '</span></div>' +
+                (isPlus() ? '' : '<div class="plus-nudge" data-tab="you">Add Postal Prime Plus for free delivery &amp; faster shipping ›</div>') +
+                '<button class="primary-btn" id="goCheckout">Proceed to Checkout</button>' +
+                '</div>';
+        }
+        return html;
+    }
+
+    function renderCheckout() {
+        var html = '<div style="padding:14px 12px 0;">';
+        var hasActive = state && state.orders.some(function (o) { return !o.collected && !o.expired; });
+        if (hasActive) {
+            html += '<div class="empty-state" style="margin-top:10px;"><div class="big">📦</div>You already have an order on the way.<br>Collect it (or wait for it to expire) before ordering again.</div></div>';
+            return html;
+        }
+        html += '<div class="section-title" style="margin:0 0 8px;">Choose a pickup locker</div>';
+        var lockers = (state && state.lockers) || [];
+        lockers.forEach(function (l) {
+            var sel = checkoutLocker === l.id;
+            var distTxt = (typeof l.distanceKm === 'number') ? l.distanceKm.toFixed(1) + ' km away' : '';
+            var cap = lockerCapInfo(l);
+            html += '<button class="locker-opt ' + (sel ? 'selected' : '') + '" data-locker="' + l.id + '">' +
+                '<div><div class="name">📦 ' + l.label + '</div><div class="dist">' + distTxt + '</div>' +
+                (cap ? '<div class="cap ' + cap.cls + '">' + cap.txt + '</div>' : '') + '</div>' +
+                '<div class="radio"></div></button>';
+        });
+        html += '</div>';
+
+        html += '<div class="gift-toggle-row">' +
+            '<div><div class="label">🎁 Send as a gift</div><div class="sub">Goes to their locker, not yours</div></div>' +
+            '<label class="switch"><input type="checkbox" id="giftToggle" ' + (giftMode ? 'checked' : '') + '>' +
+            '<span class="track"></span></label></div>';
+        if (giftMode) {
+            html += '<input type="text" class="gift-name-input" id="giftNameInput" placeholder="Recipient\'s in-game name" value="' + giftName.replace(/"/g, '&quot;') + '">';
+        }
+
+        var canPlace = checkoutLocker && !busy && (!giftMode || giftName.trim() !== '');
+        html += '<div class="summary-card">' +
+            '<div class="summary-row"><span>Items (' + cartCount() + ')</span><span>$' + cartTotal().toFixed(2) + '</span></div>' +
+            '<div class="summary-row"><span>Delivery</span>' + (isPlus() ?
+                '<span style="color:var(--green);font-weight:700;">FREE with Plus</span>' :
+                '<span>$' + deliveryFee().toFixed(2) + '</span>') + '</div>' +
+            '<div class="summary-row total"><span>Order Total</span><span>$' + cartGrandTotal().toFixed(2) + '</span></div>' +
+            (giftMode ? '<div class="stock-note low" style="margin:4px 12px 0;">You\'re charged - delivery speed/fee follows the recipient\'s own Plus status, so their final total may differ slightly.</div>' : '') +
+            (isPlus() || giftMode ? '' : '<div class="plus-nudge" data-tab="you">Add Postal Prime Plus for free delivery &amp; faster shipping ›</div>') +
+            '<button class="primary-btn" id="placeOrderBtn" ' + (canPlace ? '' : 'disabled') + '>' + (busy ? 'Placing order…' : (giftMode ? 'Send gift order' : 'Place your order')) + '</button>' +
+            '<button class="ghost-btn" id="backToCart">Back to Cart</button>' +
+            '</div>';
+        return html;
+    }
+
+    function renderOrders() {
+        var html = '<div class="section-title" style="margin-top:14px;">Your Orders</div>';
+        var orders = (state && state.orders) || [];
+        if (orders.length === 0) {
+            html += '<div class="empty-state"><div class="big">📦</div>No orders yet.</div>';
+        } else {
+            orders.forEach(function (o) {
+                var itemsLabel = o.items.map(function (it) { return (it.qty > 1 ? it.qty + 'x ' : '') + it.label; }).join(', ');
+                var elapsed = Date.now() - o.placedAt;
+                var span = Math.max(1, o.readyAt - o.placedAt);
+                var pct = Math.min(100, Math.round((elapsed / span) * 100));
+                var statusClass = o.cancelled ? 'cancelled' : (o.expired ? 'expired' : (o.collected ? 'collected' : (o.ready ? 'ready' : 'preparing')));
+                var statusLabel = o.cancelled ? 'Cancelled & refunded' : (o.expired ? 'Expired & refunded' : (o.collected ? 'Collected' : (o.ready ? 'Ready for pickup' : 'Preparing')));
+                var html2 = '<div class="order-card">' +
+                    '<div class="row1"><div><div class="items">' + itemsLabel + '</div>' +
+                    '<div class="locker">📦 ' + o.lockerLabel + ' · $' + o.total.toFixed(2) + '</div></div>' +
+                    '<span class="status-pill ' + statusClass + '">' + statusLabel + '</span></div>';
+                if (o.giftedBy) {
+                    html2 += '<div class="gifted-note">🎁 Gift from ' + o.giftedBy + '</div>';
+                }
+                if (!o.ready && !o.collected && !o.expired && !o.cancelled) {
+                    html2 += '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
+                    html2 += '<button class="cancel-btn" data-cancel="' + o.id + '" ' + (busy ? 'disabled' : '') + '>Cancel &amp; refund</button>';
+                }
+                if (o.ready && !o.collected && !o.expired && o.code) {
+                    html2 += '<div class="code-box"><div><div class="label">Pickup Code</div><div class="code">' + o.code + '</div></div>' +
+                        '<div class="hint">Head to ' + o.lockerLabel + ', use the target option on the locker, and enter this code to open it.</div></div>';
+                }
+                if (o.expired) {
+                    html2 += '<div class="expired-note">This order went uncollected too long and was refunded in full.</div>';
+                }
+                if (o.cancelled) {
+                    html2 += '<div class="expired-note">You cancelled this order and were refunded in full.</div>';
+                }
+                if (o.collected) {
+                    html2 += '<div class="review-prompts">';
+                    o.items.forEach(function (it) {
+                        if (it.reviewed) {
+                            html2 += '<div class="review-done">✓ You reviewed ' + it.label + '</div>';
+                        } else {
+                            html2 += '<button class="rate-btn" data-writereview="' + it.id + '">⭐ Rate &amp; review ' + it.label + '</button>';
+                        }
+                    });
+                    html2 += '<button class="rate-btn reorder-btn" data-reorder="' + o.id + '">🔁 Reorder</button>';
+                    html2 += '</div>';
+                }
+                html2 += '</div>';
+                html += html2;
+            });
+        }
+        return html;
+    }
+
+    function renderPlusCard() {
+        var cfg = (state && state.plusConfig) || { price: 0, durationDays: 7, deliveryFee: 0 };
+        if (isPlus()) {
+            var expiresTxt = state.plus.expiresAt ? fmtDate(state.plus.expiresAt) : '';
+            return '<div class="plus-card active">' +
+                '<div class="plus-title">✅ Postal Prime Plus</div>' +
+                '<div class="plus-sub">Active until ' + expiresTxt + ' - free delivery &amp; faster shipping</div>' +
+                '<button class="plus-btn" id="renewPlus" ' + (busy ? 'disabled' : '') + '>' + (busy ? 'Processing…' : 'Renew +' + cfg.durationDays + ' days · $' + cfg.price) + '</button>' +
+                '</div>';
+        }
+        return '<div class="plus-card">' +
+            '<div class="plus-title">🚀 Postal Prime Plus</div>' +
+            '<div class="plus-sub">Free delivery on every order (normally $' + cfg.deliveryFee.toFixed(2) + ') and faster shipping, for ' + cfg.durationDays + ' days.</div>' +
+            '<button class="plus-btn" id="subscribePlus" ' + (busy ? 'disabled' : '') + '>' + (busy ? 'Processing…' : 'Subscribe · $' + cfg.price) + '</button>' +
+            '</div>';
+    }
+
+    function subscribePlus() {
+        if (busy) return;
+        busy = true; render();
+        post('as-postalprime/subscribePlus').then(function (res) {
+            busy = false;
+            if (!res || !res.ok) {
+                showToast((res && res.error) || 'Failed to subscribe');
+                render();
+                return;
+            }
+            state.plus = res.plus;
+            render();
+            showToast('Welcome to Postal Prime Plus!');
+        });
+    }
+
+    function renderYou() {
+        var orders = (state && state.orders) || [];
+        var collected = orders.filter(function (o) { return o.collected; });
+        var totalSpent = collected.reduce(function (sum, o) { return sum + o.total; }, 0);
+        var itemsCollected = collected.reduce(function (sum, o) {
+            return sum + o.items.reduce(function (s, it) { return s + it.qty; }, 0);
+        }, 0);
+        var reviewed = 0;
+        collected.forEach(function (o) { o.items.forEach(function (it) { if (it.reviewed) reviewed++; }); });
+
+        var name = (state && state.playerName) || 'Postal Prime Customer';
+        var initial = name.charAt(0).toUpperCase();
+        var html = '<div class="you-header">' +
+            '<div class="you-avatar">' + initial + '</div>' +
+            '<div><div class="name">' + name + '</div>' +
+            '<div class="sub">' + (isPlus() ? 'Postal Prime Plus member' : 'Postal Prime member') + '</div></div></div>';
+
+        html += renderPlusCard();
+
+        html += '<div class="you-stats">' +
+            '<div class="you-stat"><div class="n">' + orders.length + '</div><div class="l">Orders placed</div></div>' +
+            '<div class="you-stat"><div class="n">' + itemsCollected + '</div><div class="l">Items collected</div></div>' +
+            '<div class="you-stat"><div class="n">$' + totalSpent.toFixed(0) + '</div><div class="l">Total spent</div></div>' +
+            '</div>';
+        html += '<div class="you-list">' +
+            '<button class="you-row" data-tab="orders"><span>📦 Your Orders' + (pendingReadyCount() ? ' <span class="you-row-badge">' + pendingReadyCount() + ' ready</span>' : '') + '</span><span class="chev">›</span></button>' +
+            '<div class="you-row" style="cursor:default;"><span>⭐ Reviews written</span><span>' + reviewed + '</span></div>' +
+            '</div>';
+        return html;
+    }
+
+    function renderDetailSheet() {
+        if (!detailItem) return '';
+        var item = catalogItem(detailItem.id);
+        if (!item) return '';
+        var oos = outOfStock(item);
+        var maxQty = typeof item.stock === 'number' ? Math.max(0, item.stock) : Infinity;
+        var p = fmt(item.price * detailItem.qty);
+        var savedDetail = inWishlist(item.id);
+        return '<div class="sheet-backdrop" id="sheetBackdrop">' +
+            '<div class="sheet">' +
+            '<button class="close-x" id="closeSheet">✕</button>' +
+            '<button class="heart-btn ' + (savedDetail ? 'saved' : '') + '" data-wishlist="' + item.id + '">' + (savedDetail ? '❤️' : '🤍') + '</button>' +
+            '<div class="icon-big">' + item.icon + '</div>' +
+            '<div class="name">' + item.label + '</div>' +
+            '<div class="stars">' + stars(item.rating) + '<span>' + fmtReviewCount(item.reviews) + ' ratings</span></div>' +
+            '<div class="price"><span class="sym">$</span>' + fmt(item.price).whole + '<span class="sym">' + fmt(item.price).cents + '</span></div>' +
+            '<div class="prime-line">' + (isPlus() ? '✓ Prime Plus FREE delivery to any locker' : '🚚 $' + deliveryFee().toFixed(2) + ' delivery to any locker (free with Plus)') + '</div>' +
+            stockNote(item) +
+            (oos ? '' :
+                '<div class="qty-row"><div class="qty-stepper">' +
+                '<button data-detailqty="-1">−</button><span>' + detailItem.qty + '</span>' +
+                '<button data-detailqty="1" ' + (detailItem.qty >= maxQty ? 'disabled' : '') + '>+</button>' +
+                '</div></div>') +
+            '<button class="primary-btn" id="confirmAdd" ' + (oos ? 'disabled' : '') + '>' +
+            (oos ? 'Out of stock' : ('Add ' + detailItem.qty + ' to Cart · $' + p.whole + '.' + p.cents)) + '</button>' +
+            renderReviews(item) +
+            '</div></div>';
+    }
+
+    function renderReviews(item) {
+        var cached = reviewsCache[item.id];
+        var html = '<div class="reviews-section">' + '<div class="rev-heading">Customer reviews</div>';
+        if (!cached || cached.loading) {
+            html += '<div class="rev-loading">Loading reviews…</div></div>';
+            return html;
+        }
+        if (cached.error) {
+            html += '<div class="rev-loading">Couldn\'t load reviews.</div></div>';
+            return html;
+        }
+        html += '<div class="rev-summary"><span class="stars">' + stars(cached.rating) + '</span><span>' + cached.rating.toFixed(1) + ' out of 5 · ' + fmtReviewCount(cached.reviewCount) + ' ratings</span></div>';
+        if (cached.mine) {
+            html += '<div class="my-review"><span class="rev-badge">Your review</span>' +
+                '<div class="rev-stars">' + stars(cached.mine.rating) + '</div>' +
+                '<div class="rev-title">' + cached.mine.title + '</div>' +
+                '<div class="rev-body">' + cached.mine.body + '</div>' +
+                '<div class="rev-meta">Verified Purchase · Delivered to a Postal Prime locker</div></div>';
+        }
+        cached.reviews.forEach(function (r) {
+            html += '<div class="review-item">' +
+                '<div class="rev-top"><div class="rev-avatar">' + (r.name || '?').charAt(0).toUpperCase() + '</div>' +
+                '<div><div class="rev-name">' + r.name + '<span class="rev-verified">✓ Verified Purchase</span></div></div></div>' +
+                '<div class="rev-stars">' + stars(r.rating) + '</div>' +
+                '<div class="rev-title">' + r.title + '</div>' +
+                '<div class="rev-body">' + r.body + '</div>' +
+                '<div class="rev-meta">Reviewed ' + fmtDate(r.createdAt) + ' · Delivered to a Postal Prime locker</div>' +
+                '</div>';
+        });
+        if (!cached.mine && cached.reviews.length === 0) {
+            html += '<div class="rev-loading">No reviews yet - be the first once you\'ve collected it.</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    function renderReviewComposer() {
+        if (!reviewDraft) return '';
+        var item = catalogItem(reviewDraft.itemId);
+        if (!item) return '';
+        var starsHtml = '';
+        for (var i = 1; i <= 5; i++) {
+            starsHtml += '<span class="' + (i <= reviewDraft.rating ? 'filled' : '') + '" data-rcstar="' + i + '">★</span>';
+        }
+        return '<div class="sheet-backdrop" id="reviewBackdrop">' +
+            '<div class="sheet review-composer">' +
+            '<button class="close-x" id="closeReview">✕</button>' +
+            '<div class="rc-title">Rate &amp; review</div>' +
+            '<div class="rc-item">' + item.icon + ' ' + item.label + '</div>' +
+            '<div class="rc-stars">' + starsHtml + '</div>' +
+            '<input type="text" id="rcTitleInput" placeholder="Give your review a title" value="' + (reviewDraft.title || '').replace(/"/g, '&quot;') + '">' +
+            '<textarea id="rcBodyInput" placeholder="What did you like or dislike?">' + (reviewDraft.body || '') + '</textarea>' +
+            '<button class="primary-btn" id="submitReview" ' + (busy ? 'disabled' : '') + '>' + (busy ? 'Submitting…' : 'Submit review') + '</button>' +
+            '</div></div>';
+    }
+
+    function render() {
+        var el = document.getElementById('screen');
+        if (!loaded) {
+            document.getElementById('header').innerHTML = '';
+            el.innerHTML = '<div class="loading">Loading Postal Prime…</div>';
+            document.getElementById('tabbar').innerHTML = '';
+            return;
+        }
+
+        var body = '';
+        if (tab === 'home') body = renderHome();
+        else if (tab === 'cart') body = renderCart();
+        else if (tab === 'checkout') body = renderCheckout();
+        else if (tab === 'orders') body = renderOrders();
+        else if (tab === 'you') body = renderYou();
+
+        document.getElementById('header').innerHTML = renderHeader();
+        el.innerHTML = '<div class="scroll">' + body + '</div>' + renderDetailSheet() + renderReviewComposer() + (toastMsg ? '<div class="toast">' + toastMsg + '</div>' : '');
+        document.getElementById('tabbar').innerHTML = renderTabbar();
+        document.getElementById('tabbar').style.display = (tab === 'checkout') ? 'none' : 'flex';
+        wire();
+    }
+
+    function wire() {
+        var root = document;
+
+        var searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.oninput = function (e) {
+                searchQuery = e.target.value;
+                var pos = searchInput.selectionStart;
+                render();
+                var again = document.getElementById('searchInput');
+                if (again) { again.focus(); again.setSelectionRange(pos, pos); }
+            };
+        }
+
+        root.querySelectorAll('[data-cat]').forEach(function (el) {
+            el.onclick = function () { activeCategory = el.getAttribute('data-cat'); render(); };
+        });
+
+        var chipsEl = document.querySelector('.chips');
+        if (chipsEl) {
+            chipsEl.onwheel = function (e) {
+                if (e.deltaY === 0) return;
+                e.preventDefault();
+                chipsEl.scrollLeft += e.deltaY;
+            };
+        }
+
+        root.querySelectorAll('[data-quickadd]').forEach(function (el) {
+            el.onclick = function (e) { e.stopPropagation(); addToCart(el.getAttribute('data-quickadd'), 1); };
+        });
+
+        root.querySelectorAll('[data-detail]').forEach(function (el) {
+            el.onclick = function () {
+                var id = el.getAttribute('data-detail');
+                detailItem = { id: id, qty: 1 };
+                render();
+                fetchReviews(id);
+            };
+        });
+
+        var closeSheet = document.getElementById('closeSheet');
+        if (closeSheet) closeSheet.onclick = function () { detailItem = null; render(); };
+        var backdrop = document.getElementById('sheetBackdrop');
+        if (backdrop) backdrop.onclick = function (e) { if (e.target === backdrop) { detailItem = null; render(); } };
+
+        root.querySelectorAll('[data-detailqty]').forEach(function (el) {
+            el.onclick = function () {
+                var d = parseInt(el.getAttribute('data-detailqty'), 10);
+                detailItem.qty = Math.max(1, detailItem.qty + d);
+                render();
+            };
+        });
+
+        var confirmAdd = document.getElementById('confirmAdd');
+        if (confirmAdd) confirmAdd.onclick = function () {
+            addToCart(detailItem.id, detailItem.qty);
+            detailItem = null;
+            render();
+        };
+
+        root.querySelectorAll('[data-qty]').forEach(function (el) {
+            el.onclick = function () {
+                var id = el.getAttribute('data-qty');
+                var d = parseInt(el.getAttribute('data-delta'), 10);
+                setQty(id, (cart[id] || 0) + d);
+            };
+        });
+
+        var goCheckout = document.getElementById('goCheckout');
+        if (goCheckout) goCheckout.onclick = function () { tab = 'checkout'; render(); };
+
+        var backToCart = document.getElementById('backToCart');
+        if (backToCart) backToCart.onclick = function () { tab = 'cart'; render(); };
+        var backToCartHeader = document.getElementById('backToCartFromHeader');
+        if (backToCartHeader) backToCartHeader.onclick = function () { tab = 'cart'; render(); };
+
+        root.querySelectorAll('[data-locker]').forEach(function (el) {
+            el.onclick = function () { checkoutLocker = el.getAttribute('data-locker'); render(); };
+        });
+
+        var placeOrderBtn = document.getElementById('placeOrderBtn');
+        if (placeOrderBtn) placeOrderBtn.onclick = function () { placeOrder(); };
+
+        var giftToggle = document.getElementById('giftToggle');
+        if (giftToggle) giftToggle.onchange = function (e) { giftMode = e.target.checked; render(); };
+        var giftNameInput = document.getElementById('giftNameInput');
+        if (giftNameInput) {
+            giftNameInput.oninput = function (e) {
+                giftName = e.target.value;
+                var pos = giftNameInput.selectionStart;
+                render();
+                var again = document.getElementById('giftNameInput');
+                if (again) { again.focus(); again.setSelectionRange(pos, pos); }
+            };
+        }
+
+        root.querySelectorAll('[data-reorder]').forEach(function (el) {
+            el.onclick = function () { reorder(el.getAttribute('data-reorder')); };
+        });
+
+        root.querySelectorAll('[data-wishlist]').forEach(function (el) {
+            el.onclick = function (e) { e.stopPropagation(); toggleWishlist(el.getAttribute('data-wishlist')); };
+        });
+
+        root.querySelectorAll('[data-cancel]').forEach(function (el) {
+            el.onclick = function () { cancelOrder(); };
+        });
+
+        root.querySelectorAll('[data-writereview]').forEach(function (el) {
+            el.onclick = function () {
+                reviewDraft = { itemId: el.getAttribute('data-writereview'), rating: 5, title: '', body: '' };
+                render();
+            };
+        });
+
+        var closeReview = document.getElementById('closeReview');
+        if (closeReview) closeReview.onclick = function () { reviewDraft = null; render(); };
+
+        root.querySelectorAll('[data-rcstar]').forEach(function (el) {
+            el.onclick = function () {
+                reviewDraft.rating = parseInt(el.getAttribute('data-rcstar'), 10);
+                render();
+            };
+        });
+
+        var rcTitleInput = document.getElementById('rcTitleInput');
+        if (rcTitleInput) rcTitleInput.oninput = function (e) { reviewDraft.title = e.target.value; };
+        var rcBodyInput = document.getElementById('rcBodyInput');
+        if (rcBodyInput) rcBodyInput.oninput = function (e) { reviewDraft.body = e.target.value; };
+
+        var submitReviewBtn = document.getElementById('submitReview');
+        if (submitReviewBtn) submitReviewBtn.onclick = function () { submitReview(); };
+
+        var subscribePlusBtn = document.getElementById('subscribePlus');
+        if (subscribePlusBtn) subscribePlusBtn.onclick = function () { subscribePlus(); };
+        var renewPlusBtn = document.getElementById('renewPlus');
+        if (renewPlusBtn) renewPlusBtn.onclick = function () { subscribePlus(); };
+
+        root.querySelectorAll('.tab, .icon-btn[data-tab], .you-row[data-tab], .promo[data-tab], .plus-nudge[data-tab]').forEach(function (el) {
+            el.onclick = el.onclick || function () { tab = el.getAttribute('data-tab'); render(); };
+        });
+    }
+
+    // Keeps the app in sync even if the server's push (as-postalprime:updated) never arrives or
+    // gets missed while the phone's iframe is being remounted - polls real state from the server
+    // rather than just re-rendering the same numbers, so "Preparing" -> "Ready" always catches up
+    // within a few seconds without needing to close and reopen the app.
+    var progressTicker = setInterval(function () {
+        if (document.visibilityState !== 'visible' || !shown) return;
+        if (hasPreparingOrder() || pendingReadyCount()) refresh();
+    }, 5000);
+
+    var shown = false;
+    function showApp() {
+        if (shown) return;
+        shown = true;
+        document.documentElement.style.visibility = 'visible';
+        document.body.style.visibility = 'visible';
+        refresh();
+    }
+
+    window.addEventListener('message', function (event) {
+        if (event.data === 'componentsLoaded') { showApp(); return; }
+        var data = event.data;
+        if (!data || typeof data !== 'object') return;
+        if (!shown) return;
+        if (data.action === 'as-postalprime:updated') { refresh(); return; }
+    });
+
+    document.addEventListener('visibilitychange', function () {
+        if (shown && document.visibilityState === 'visible') refresh();
+    });
+})();
+</script>
+</body>
+</html>
