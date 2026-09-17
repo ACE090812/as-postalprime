@@ -65,11 +65,11 @@ Config = {
     -- interaction zone at its coordinates - point `coords`/`heading` at wherever you put each prop.
     -- The five below are your own actual locker placements (pulled from your locker prop setup).
     lockers = {
-        { id = 'greenwich',    label = 'Greenwich Locker',     coords = vector3(170.9201, -1001.5137, 28.3388),  heading = 342.6835 },
-        { id = 'bromley',      label = 'Bromley Locker',       coords = vector3(55.4414, -1739.2365, 28.3076),   heading = 233.9158 },
-        { id = 'lewisham',     label = 'Lewisham Locker',      coords = vector3(-985.4567, -801.9762, 15.2739),  heading = 328.0291 },
-        { id = 'towerhamlets', label = 'Tower Hamlets Locker', coords = vector3(-331.2124, 143.8541, 65.9996),   heading = 3.2400 },
-        { id = 'bexley',       label = 'Bexley Locker',        coords = vector3(1110.4313, -352.7268, 66.0059),  heading = 35.3030 },
+        { id = 'legionsquare',  label = 'Legion Square Locker',     coords = vector3(170.9201, -1001.5137, 28.3388),  heading = 342.6835 },
+        { id = 'bromley',       label = 'Bromley Locker',           coords = vector3(55.4414, -1739.2365, 28.3076),   heading = 233.9158 },
+        { id = 'vespucci',      label = 'Vespucci Locker',          coords = vector3(-985.4567, -801.9762, 15.2739),  heading = 328.0291 },
+        { id = 'towerhamlets',  label = 'Tower Hamlets Locker',     coords = vector3(-331.2124, 143.8541, 65.9996),   heading = 3.2400 },
+        { id = 'bexley',        label = 'Bexley Locker',            coords = vector3(1110.4313, -352.7268, 66.0059),  heading = 35.3030 },
     },
 
     -- The physical locker wall prop spawned at each Config.lockers location, with per-door open
