@@ -46,6 +46,10 @@ RegisterNUICallback('as-postalprime/toggleWishlist', function(data, cb)
     cb(lib.callback.await('as-postalprime:toggleWishlist', false, data))
 end)
 
+RegisterNUICallback('as-postalprime/saveCart', function(data, cb)
+    cb(lib.callback.await('as-postalprime:saveCart', false, data))
+end)
+
 RegisterNUICallback('as-postalprime/cancelOrder', function(_, cb)
     cb(lib.callback.await('as-postalprime:cancelOrder', false))
 end)
@@ -175,6 +179,35 @@ AddEventHandler('as-postalprime:client:syncDoor', function(lockerId, doorSlot, o
     end
 end)
 
+--- ─── Locker pickup keypad (custom UI, replaces ox_lib) ─────────────────────────
+-- The keypad lives as an always-loaded overlay on this resource's own ui_page (see
+-- ui/index.html's #lockerKeypad) and is shown/hidden directly on THIS root NUI instance via
+-- SendNUIMessage - completely separate from the copy sd-phone embeds in its own iframe when the
+-- app is opened on the phone, so this works at the locker whether or not the phone is out.
+-- pendingLockerId correlates the keypad's submit/cancel callbacks (which don't otherwise know
+-- which of the (possibly several) lockers triggered them) back to the right one.
+local pendingLockerId = nil
+
+local function closeLockerKeypad()
+    SetNuiFocus(false, false)
+    pendingLockerId = nil
+end
+
+RegisterNUICallback('as-postalprime/locker:submit', function(data, cb)
+    if not pendingLockerId then cb({ ok = false, error = 'No locker selected' }) return end
+    local code = data and data.code
+    local result = lib.callback.await('as-postalprime:collect', false, { lockerId = pendingLockerId, code = code })
+    if result and result.ok then
+        SendNUIMessage({ action = 'as-postalprime:updated' })
+    end
+    cb(result or { ok = false, error = 'No response' })
+end)
+
+RegisterNUICallback('as-postalprime/locker:close', function(_, cb)
+    closeLockerKeypad()
+    cb({ ok = true })
+end)
+
 CreateThread(function()
     for _, locker in ipairs(Config.lockers) do
         local model = joaat(Config.lockerWall.prop)
@@ -189,18 +222,11 @@ CreateThread(function()
             obj, 'as-postalprime:collect_' .. locker.id,
             'fa-solid fa-box-open', 'Open Postal Prime Locker', Config.lockerWall.interactDistance or 2.0,
             function()
-                local input = lib.inputDialog(locker.label, {
-                    { type = 'input', label = 'Pickup Code', description = 'Enter the 6-digit code from your Postal Prime app', required = true },
-                })
-                if not input or not input[1] then return end
-
-                local result = lib.callback.await('as-postalprime:collect', false, { lockerId = locker.id, code = input[1] })
-                if result and result.ok then
-                    lib.notify({ title = 'Postal Prime', description = 'Locker door opened - grab your parcel!', type = 'success' })
-                    SendNUIMessage({ action = 'as-postalprime:updated' })
-                else
-                    lib.notify({ title = 'Postal Prime', description = (result and result.error) or 'Failed to open locker', type = 'error' })
-                end
+                -- On-model screen (client/screen.lua) when enabled + ready; otherwise fall back to the NUI overlay.
+                if PPScreen and PPScreen.open(locker.id, locker.label, obj) then return end
+                pendingLockerId = locker.id
+                SetNuiFocus(true, true)
+                SendNUIMessage({ action = 'as-postalprime:keypad:show', label = locker.label })
             end
         )
     end
@@ -217,4 +243,7 @@ AddEventHandler('onResourceStop', function(name)
         end
     end
     if orderBlip and DoesBlipExist(orderBlip) then RemoveBlip(orderBlip) end
+    -- Belt-and-suspenders: don't leave the player's controls locked to NUI if the resource
+    -- stops while the locker keypad happens to be open.
+    if pendingLockerId then SetNuiFocus(false, false) end
 end)

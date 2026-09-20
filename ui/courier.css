@@ -1,0 +1,173 @@
+/* Postal Prime courier UI (depot window, notifications, progress bar, run HUD).
+   Loaded by ui/index.html and driven by ui/courier.js on the ROOT NUI page only.
+   Everything is scoped under #ppc / .pc-* so it can't touch the phone app's styles. */
+
+#ppc {
+    --pc-ink: #1b1f24; --pc-ink-2: #545c67; --pc-ink-3: #8a919b;
+    --pc-line: #dde0e5; --pc-line-2: #eceef1; --pc-surface: #f5f6f8; --pc-white: #fff;
+    --pc-red: #c4202e; --pc-red-hover: #a81a27; --pc-red-tint: #fbeced;
+    --pc-green: #1c7a4b; --pc-green-tint: #e6f3ec; --pc-amber: #9a5a00; --pc-amber-tint: #fbf1de;
+    --pc-blue: #1d4f9c; --pc-blue-tint: #e7eef8;
+    --pc-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+
+    position: fixed; inset: 0; pointer-events: none; z-index: 2147483000;
+    /* the root NUI page is visibility:hidden until something needs showing - opt back in */
+    visibility: visible;
+    font: 13px/1.45 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--pc-ink); -webkit-font-smoothing: antialiased; user-select: none;
+}
+#ppc *, #ppc *::before, #ppc *::after { box-sizing: border-box; }
+#ppc button { font: inherit; }
+#ppc svg.pc-i { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+#ppc .pc-mono { font-family: var(--pc-mono); font-variant-numeric: tabular-nums; }
+#ppc .pc-off { display: none !important; }
+
+/* buttons */
+#ppc .pc-btn { font-weight: 600; height: 32px; padding: 0 14px; border-radius: 6px; border: 1px solid var(--pc-line); background: var(--pc-white); color: var(--pc-ink);
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; transition: background .12s, border-color .12s; }
+#ppc .pc-btn:hover:not(:disabled) { background: var(--pc-surface); border-color: #cbd0d6; }
+#ppc .pc-btn:disabled { color: var(--pc-ink-3); background: var(--pc-surface); cursor: not-allowed; }
+#ppc .pc-btn.primary { background: var(--pc-red); border-color: var(--pc-red); color: #fff; }
+#ppc .pc-btn.primary:hover:not(:disabled) { background: var(--pc-red-hover); border-color: var(--pc-red-hover); }
+#ppc .pc-btn.primary:disabled { background: #e4bcc0; border-color: #e4bcc0; color: #fff; }
+#ppc .pc-btn.danger { color: var(--pc-red); border-color: #e3b9bd; }
+#ppc .pc-btn.danger:hover:not(:disabled) { background: var(--pc-red-tint); border-color: #d99aa1; }
+#ppc .pc-btn.sm { height: 28px; padding: 0 11px; font-size: 12.5px; }
+#ppc .pc-btn.busy { opacity: .6; pointer-events: none; }
+
+/* tags */
+#ppc .pc-tag { display: inline-block; white-space: nowrap; font-size: 10.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; padding: 2px 7px; border-radius: 3px;
+    background: var(--pc-surface); color: var(--pc-ink-2); border: 1px solid var(--pc-line-2); line-height: 1.4; }
+#ppc .pc-tag.home { background: var(--pc-blue-tint); color: var(--pc-blue); border-color: #d2def0; }
+#ppc .pc-tag.locker { background: var(--pc-amber-tint); color: var(--pc-amber); border-color: #f0e0bd; }
+#ppc .pc-tag.ok { background: var(--pc-green-tint); color: var(--pc-green); border-color: #cfe6da; }
+
+/* depot window */
+#pcDepot { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10,12,15,.42); pointer-events: auto; }
+#pcDepot .pc-win { position: relative; width: min(900px, 96vw); height: min(560px, 90vh); background: var(--pc-white); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.25); animation: pc-rise .14s ease-out; }
+@keyframes pc-rise { from { transform: translateY(6px); opacity: 0; } to { transform: none; opacity: 1; } }
+#pcDepot .pc-head { height: 52px; flex: none; display: flex; align-items: center; padding: 0 16px 0 20px; border-bottom: 1px solid var(--pc-line); position: relative; }
+#pcDepot .pc-head::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--pc-red); }
+#pcDepot .pc-logo { height: 42px; width: auto; display: block; margin-left: -4px; }
+#pcDepot .pc-title { font-size: 14px; font-weight: 700; letter-spacing: .1px; margin-left: 8px; padding-left: 14px; border-left: 1px solid var(--pc-line); line-height: 22px; }
+#pcDepot .pc-sub { color: var(--pc-ink-3); margin-left: 12px; font-size: 12.5px; }
+#pcDepot .pc-x { margin-left: auto; width: 30px; height: 30px; border: 0; background: none; border-radius: 6px; color: var(--pc-ink-2); cursor: pointer; display: grid; place-items: center; }
+#pcDepot .pc-x:hover { background: var(--pc-surface); color: var(--pc-ink); }
+#pcDepot .pc-main { flex: 1; display: flex; min-height: 0; }
+
+#pcDepot .pc-side { width: 196px; flex: none; background: var(--pc-surface); border-right: 1px solid var(--pc-line); display: flex; flex-direction: column; padding: 12px 10px; }
+#pcDepot .pc-nav { display: flex; flex-direction: column; gap: 2px; }
+#pcDepot .pc-nav button { font-weight: 600; color: var(--pc-ink-2); background: none; border: 0; border-radius: 6px; height: 36px; padding: 0 10px; display: flex; align-items: center; gap: 10px; cursor: pointer; text-align: left; position: relative; }
+#pcDepot .pc-nav button:hover { background: #ebedf0; color: var(--pc-ink); }
+#pcDepot .pc-nav button.on { background: var(--pc-white); color: var(--pc-ink); box-shadow: 0 0 0 1px var(--pc-line); }
+#pcDepot .pc-nav button.on::before { content: ""; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 3px; background: var(--pc-red); border-radius: 0 2px 2px 0; }
+#pcDepot .pc-nav .pc-n { margin-left: auto; font-size: 11px; font-weight: 700; color: var(--pc-ink-2); background: #e3e6ea; border-radius: 9px; padding: 0 7px; min-width: 20px; text-align: center; line-height: 18px; }
+#pcDepot .pc-nav button.on .pc-n { background: var(--pc-red); color: #fff; }
+#pcDepot .pc-prof { margin-top: auto; border-top: 1px solid var(--pc-line); padding: 12px 6px 2px; }
+#pcDepot .pc-prof .r1 { display: flex; justify-content: space-between; font-weight: 700; }
+#pcDepot .pc-prof .r2 { color: var(--pc-ink-3); font-size: 12px; margin-top: 2px; }
+#pcDepot .pc-meter { height: 4px; background: #dfe2e6; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+#pcDepot .pc-meter i { display: block; height: 100%; background: var(--pc-ink); }
+
+#pcDepot .pc-content { flex: 1; min-width: 0; overflow: auto; padding: 20px 24px 24px; }
+#pcDepot .pc-content::-webkit-scrollbar { width: 8px; }
+#pcDepot .pc-content::-webkit-scrollbar-thumb { background: #d3d7dc; border-radius: 4px; }
+#pcDepot .pc-h1 { font-size: 16px; font-weight: 700; margin: 0 0 2px; }
+#pcDepot .pc-lead { color: var(--pc-ink-2); margin: 0 0 16px; }
+#pcDepot .pc-box { border: 1px solid var(--pc-line); border-radius: 6px; }
+#pcDepot .pc-cols > div > .pc-box + .pc-box { margin-top: 14px; }
+#pcDepot .pc-box-h { padding: 10px 14px; border-bottom: 1px solid var(--pc-line); font-size: 11px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: var(--pc-ink-2); background: var(--pc-surface); border-radius: 6px 6px 0 0; display: flex; align-items: center; }
+#pcDepot .pc-box-b { padding: 4px 14px; }
+#pcDepot .pc-kv { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--pc-line-2); }
+#pcDepot .pc-kv:last-child { border-bottom: 0; }
+#pcDepot .pc-kv span:first-child { color: var(--pc-ink-2); }
+#pcDepot .pc-kv b { font-weight: 650; }
+#pcDepot .pc-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+#pcDepot .pc-status { display: flex; align-items: center; gap: 12px; padding: 14px; }
+#pcDepot .pc-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pc-ink-3); flex: none; }
+#pcDepot .pc-dot.on { background: var(--pc-green); box-shadow: 0 0 0 3px var(--pc-green-tint); }
+#pcDepot .pc-muted { color: var(--pc-ink-3); font-size: 12px; }
+#pcDepot .pc-note { color: var(--pc-ink-3); font-size: 12px; padding: 0 14px 12px; }
+#pcDepot .pc-pad { padding: 4px 14px 14px; }
+
+#pcDepot table { width: 100%; border-collapse: collapse; }
+#pcDepot th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .7px; text-transform: uppercase; color: var(--pc-ink-3); padding: 0 12px 8px; border-bottom: 1px solid var(--pc-line); }
+#pcDepot td { padding: 11px 12px; border-bottom: 1px solid var(--pc-line-2); vertical-align: middle; }
+#pcDepot tr:last-child td { border-bottom: 0; }
+#pcDepot tbody tr:hover td { background: #fafbfc; }
+#pcDepot th.r, #pcDepot td.r { text-align: right; }
+#pcDepot .pc-why { color: var(--pc-red); font-size: 12px; margin-top: 2px; }
+#pcDepot tr.dim td { color: var(--pc-ink-3); }
+#pcDepot tr.dim .pc-dest { color: var(--pc-ink-2); }
+#pcDepot .pc-dest { font-weight: 600; }
+#pcDepot .t-ok { color: var(--pc-ink); } #pcDepot .t-warn { color: var(--pc-amber); font-weight: 700; } #pcDepot .t-late { color: var(--pc-red); font-weight: 700; }
+#pcDepot .pc-tblbox { padding: 12px 0 0; }
+#pcDepot .pc-foot { display: flex; align-items: center; gap: 16px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--pc-line); color: var(--pc-ink-2); }
+#pcDepot .pc-foot .sp { margin-left: auto; }
+#pcDepot .pc-foot b { color: var(--pc-ink); }
+#pcDepot .pc-empty { text-align: center; padding: 56px 20px; color: var(--pc-ink-3); }
+#pcDepot .pc-empty.tight { padding: 30px 20px; }
+#pcDepot .pc-empty svg { width: 30px; height: 30px; stroke-width: 1.4; margin-bottom: 8px; }
+#pcDepot .pc-empty b { display: block; color: var(--pc-ink-2); font-size: 14px; margin-bottom: 2px; }
+
+/* notifications */
+#pcToasts { position: absolute; top: 16px; right: 16px; width: 320px; z-index: 10; display: flex; flex-direction: column; gap: 8px; }
+#pcToasts .pc-toast, #pcInToasts .pc-toast { display: flex; gap: 10px; background: rgba(26,29,33,.96); color: #fff; border-radius: 6px; padding: 11px 14px 11px 12px; border-left: 3px solid #5b8ad6;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4); animation: pc-tin .18s ease-out; }
+#pcToasts .pc-toast.success, #pcInToasts .pc-toast.success { border-left-color: #3fae7a; }
+#pcToasts .pc-toast.error, #pcInToasts .pc-toast.error { border-left-color: #e0525f; }
+#pcToasts .pc-toast svg, #pcInToasts .pc-toast svg { margin-top: 1px; color: #8fb3ee; }
+#pcToasts .pc-toast.success svg, #pcInToasts .pc-toast.success svg { color: #5fcb9b; }
+#pcToasts .pc-toast.error svg, #pcInToasts .pc-toast.error svg { color: #ef7d87; }
+#pcToasts .pc-t, #pcInToasts .pc-t { font-weight: 650; }
+#pcToasts .pc-d, #pcInToasts .pc-d { color: #b9bfc8; font-size: 12.5px; margin-top: 1px; white-space: pre-line; }
+#pcToasts .pc-toast.out, #pcInToasts .pc-toast.out { animation: pc-tout .2s ease-in forwards; }
+@keyframes pc-tin { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes pc-tout { to { transform: translateX(20px); opacity: 0; } }
+
+/* progress */
+#pcProg { position: absolute; left: 50%; bottom: 80px; transform: translateX(-50%); width: 320px; background: rgba(26,29,33,.96); color: #fff; border-radius: 6px; padding: 11px 14px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+#pcProg .pc-top { display: flex; justify-content: space-between; font-weight: 600; }
+#pcProg .pc-pct { color: #b9bfc8; font-family: var(--pc-mono); font-size: 12px; }
+#pcProg .pc-track { height: 3px; background: rgba(255,255,255,.16); border-radius: 2px; margin-top: 9px; overflow: hidden; }
+#pcProg .pc-fill { height: 100%; width: 0; background: #fff; }
+#pcProg .pc-hint { margin-top: 8px; font-size: 11.5px; color: #8d949e; }
+
+/* run HUD */
+#pcHud { position: absolute; left: 1.5vw; top: 60vh; width: 290px; background: rgba(20,22,26,.78); color: #fff; border-radius: 6px; border: 1px solid rgba(255,255,255,.07); }
+#pcHud .pc-hh { display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-size: 10.5px; font-weight: 700; letter-spacing: 1px; color: #c9cdd3; border-bottom: 1px solid rgba(255,255,255,.08); }
+#pcHud .pc-hh::before { content: ""; width: 8px; height: 8px; background: var(--pc-red); border-radius: 1px; }
+#pcHud .pc-hh span { margin-left: auto; font-weight: 600; letter-spacing: .3px; color: #8d949e; text-transform: none; }
+#pcHud .pc-hr { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid rgba(255,255,255,.05); }
+#pcHud .pc-hr:last-of-type { border-bottom: 0; }
+#pcHud .pc-hr .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 550; }
+#pcHud .pc-hr .s { color: #8d949e; font-size: 11px; font-family: var(--pc-mono); }
+#pcHud .pc-hr .t { font-family: var(--pc-mono); font-variant-numeric: tabular-nums; font-weight: 600; min-width: 62px; text-align: right; }
+#pcHud .t.warn { color: #f0b04a; } #pcHud .t.late { color: #f0707a; } #pcHud .t.dim { color: #8d949e; font-weight: 500; }
+#pcHud .pc-kb { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid rgba(255,255,255,.08); color: #b9bfc8; font-size: 12px; }
+#pcHud .pc-key { font-family: var(--pc-mono); font-size: 11px; font-weight: 700; background: #fff; color: #111; border-radius: 3px; padding: 1px 6px; }
+
+/* dialogs (abandon confirm, take-which-parcel) */
+#pcDlg { position: absolute; inset: 0; background: rgba(10,12,15,.55); display: flex; align-items: center; justify-content: center; pointer-events: auto; }
+#pcDlg .pc-dlg { width: 400px; max-width: 94vw; background: #fff; border-radius: 8px; box-shadow: 0 20px 50px rgba(0,0,0,.5); animation: pc-rise .12s ease-out; }
+#pcDlg .pc-b { padding: 20px 22px 6px; }
+#pcDlg h3 { margin: 0 0 6px; font-size: 15px; }
+#pcDlg p { margin: 0; color: var(--pc-ink-2); }
+#pcDlg .pc-acts { display: flex; gap: 8px; justify-content: flex-end; padding: 18px 22px; }
+#pcDlg .pc-pick { display: flex; flex-direction: column; margin-top: 10px; border: 1px solid var(--pc-line); border-radius: 6px; overflow: hidden; }
+#pcDlg .pc-pick button { background: #fff; border: 0; border-bottom: 1px solid var(--pc-line-2); text-align: left; padding: 10px 12px; cursor: pointer; display: flex; align-items: center; gap: 12px; color: var(--pc-ink); }
+#pcDlg .pc-pick button:last-child { border-bottom: 0; }
+#pcDlg .pc-pick button:hover { background: var(--pc-surface); }
+#pcDlg .pc-pick .nm { font-weight: 600; flex: 1; min-width: 0; }
+#pcDlg .pc-pick .mt { color: var(--pc-ink-3); font-size: 12px; display: block; font-weight: 400; }
+#pcDlg .pc-pick .tm { font-family: var(--pc-mono); font-weight: 600; }
+#pcDlg .pc-pick .tm.warn { color: var(--pc-amber); } #pcDlg .pc-pick .tm.late { color: var(--pc-red); }
+
+/* notifications while the depot window is open: drop down from the top edge of the window */
+#pcInToasts { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: min(440px, 92%); padding-top: 10px; z-index: 20;
+    display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+#pcInToasts .pc-toast { animation: pc-drop .24s cubic-bezier(.2,.8,.2,1); }
+#pcInToasts .pc-toast.out { animation: pc-lift .2s ease-in forwards; }
+@keyframes pc-drop { from { transform: translateY(-140%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes pc-lift { to { transform: translateY(-140%); opacity: 0; } }

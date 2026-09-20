@@ -57,12 +57,15 @@ local function ensureTables()
     pcall(query, 'ALTER TABLE postalprime_stock CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci')
 end
 
+local normalize -- defined below, next to getPlayer
+
 local function loadAll()
     local playerRows = query('SELECT identifier, data FROM postalprime_players', {})
     for _, row in ipairs(playerRows or {}) do
         local ok, decoded = pcall(json.decode, row.data)
         if ok and type(decoded) == 'table' then
             PPStore.players[row.identifier] = decoded
+            normalize(decoded)
         end
     end
 
@@ -168,14 +171,23 @@ function PPStore.restock(itemId, amount)
     return newTotal
 end
 
+-- Parcels sent by other resources live in pd.parcels so they never block shopping. Older saves kept
+-- them in pd.active - move those over.
+normalize = function(pd)
+    if not pd.wishlist then pd.wishlist = {} end -- back-fills older saved rows from before wishlists existed
+    if not pd.parcels then pd.parcels = {} end
+    if pd.active and pd.active.parcel then
+        pd.parcels[#pd.parcels + 1] = pd.active
+        pd.active = nil
+    end
+end
+
 function PPStore.getPlayer(cid)
     while not PPStore.ready do Wait(0) end -- guards against a request landing before the initial SQL load finishes
     if not PPStore.players[cid] then
-        PPStore.players[cid] = { active = nil, history = {}, wishlist = {} }
+        PPStore.players[cid] = { active = nil, history = {}, wishlist = {}, parcels = {} }
     end
-    if not PPStore.players[cid].wishlist then
-        PPStore.players[cid].wishlist = {} -- back-fills older saved rows from before wishlists existed
-    end
+    normalize(PPStore.players[cid])
     return PPStore.players[cid]
 end
 

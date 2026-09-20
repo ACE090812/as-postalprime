@@ -245,6 +245,19 @@
     .locker-opt .cap.moderate { color: var(--orange-dark); }
     .locker-opt .cap.busy { color: var(--red); }
 
+    /* Locker | Home toggle + property dropdown (home delivery) */
+    .seg { display: flex; background: var(--surface); border-radius: 10px; padding: 3px; margin: 0 0 12px; }
+    .seg-btn {
+        flex: 1; border: none; background: transparent; border-radius: 8px; padding: 10px 6px; font-size: 13.5px;
+        font-weight: 700; color: var(--text-dim); cursor: pointer;
+    }
+    .seg-btn.active { background: var(--elevated); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+    .prop-select {
+        width: 100%; padding: 13px 14px; border: 1px solid var(--hairline); border-radius: 10px; font-size: 14px;
+        background: var(--elevated); color: var(--text); margin-bottom: 10px;
+    }
+    .home-note { font-size: 12px; color: var(--text-dim); line-height: 1.45; margin-bottom: 10px; }
+
     .order-card {
         background: var(--elevated); border: 1px solid var(--hairline); border-radius: 8px;
         padding: 16px; margin: 0 12px 12px;
@@ -360,7 +373,72 @@
         border-radius: 10px; padding: 13px 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
         font-size: 13.5px; font-weight: 600; z-index: 50; text-align: center;
     }
+
+    /* ---------------------------------------------------------- locker keypad -------------
+       Standalone world-interaction popup shown at the physical locker prop (via ox_target),
+       replacing lib.inputDialog. This lives OUTSIDE #app and is shown/hidden directly by this
+       page's own root instance (see showLockerKeypad/hideLockerKeypad below) - independent of
+       whether the phone app itself is open, since interacting with the locker doesn't require
+       the phone to be out. Styled like a real parcel-locker kiosk touchscreen using the same
+       navy/orange Postal Prime brand tokens as the app. */
+    #lockerKeypad {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        background: transparent;
+    }
+    #lockerKeypad.hidden { display: none; }
+    .kiosk .hidden { display: none !important; }
+    /* Keypad-only mode: the root NUI instance never shows the phone app, so hide #app (white
+       full-screen background + empty tabbar line) while the keypad is up. */
+    body.kiosk-only #app { display: none; }
+    body.kiosk-only { background: transparent; }
+    .kiosk {
+        width: 300px; background: var(--elevated); border-radius: 18px; overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.45); border-top: 6px solid var(--orange);
+    }
+    .kiosk-head {
+        background: var(--navy); color: #fff; padding: 16px 18px 14px; text-align: center; position: relative;
+    }
+    .kiosk-head img { height: 24px; display: block; margin: 0 auto 8px; filter: brightness(0) invert(1); }
+    .kiosk-head h2 { margin: 0; font-size: 15px; font-weight: 800; }
+    .kiosk-head p { margin: 3px 0 0; font-size: 12px; color: #cfe0ff; }
+    .kiosk-close {
+        position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; border-radius: 999px;
+        border: none; background: rgba(255,255,255,0.18); color: #fff; font-size: 13px; cursor: pointer;
+    }
+    .kiosk-dots { display: flex; justify-content: center; gap: 10px; padding: 18px 0 6px; }
+    .kiosk-dot {
+        width: 15px; height: 15px; border-radius: 999px; border: 2px solid var(--navy); background: #fff;
+        transition: background .1s ease, transform .1s ease;
+    }
+    .kiosk-dot.filled { background: var(--navy); transform: scale(1.1); }
+    .kiosk-dot.err { border-color: var(--red); background: var(--red); }
+    .kiosk-pad {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px 18px 6px;
+    }
+    .kiosk-key {
+        height: 52px; border-radius: 12px; border: none; background: var(--surface); color: var(--text);
+        font-size: 19px; font-weight: 700; cursor: pointer;
+    }
+    .kiosk-key:active { background: var(--hairline); }
+    .kiosk-key.wide { grid-column: span 1; font-size: 13px; color: var(--text-dim); }
+    .kiosk-actions { display: flex; gap: 10px; padding: 14px 18px 18px; }
+    .kiosk-btn {
+        flex: 1; height: 44px; border-radius: 10px; border: none; font-size: 14px; font-weight: 800; cursor: pointer;
+    }
+    .kiosk-btn.cancel { background: var(--surface); color: var(--text); }
+    .kiosk-btn.submit { background: var(--orange); color: #fff; }
+    .kiosk-btn.submit:disabled { background: #f3b7ba; cursor: not-allowed; }
+    .kiosk-result { padding: 26px 18px 22px; text-align: center; }
+    .kiosk-result .ic {
+        width: 52px; height: 52px; border-radius: 999px; margin: 0 auto 12px; display: flex;
+        align-items: center; justify-content: center; font-size: 26px; color: #fff;
+    }
+    .kiosk-result.ok .ic { background: var(--green); }
+    .kiosk-result.err .ic { background: var(--red); }
+    .kiosk-result p { margin: 0; font-size: 13.5px; color: var(--text); font-weight: 600; }
+    .kiosk-retry { margin: 14px 18px 18px; height: 40px; border-radius: 10px; border: none; width: calc(100% - 36px); background: var(--navy); color: #fff; font-weight: 800; font-size: 13.5px; cursor: pointer; }
 </style>
+<link rel="stylesheet" href="courier.css">
 </head>
 <body>
 <div id="app">
@@ -371,6 +449,46 @@
         <div class="tabbar" id="tabbar"></div>
     </div>
 </div>
+
+<div id="lockerKeypad" class="hidden">
+    <div class="kiosk">
+        <div class="kiosk-head">
+            <button class="kiosk-close" id="kioskClose" aria-label="Cancel">&#10005;</button>
+            <img src="logo.png" alt="Postal Prime">
+            <h2 id="kioskLabel">Locker</h2>
+            <p>Enter your 6-digit pickup code</p>
+        </div>
+        <div id="kioskEntry">
+            <div class="kiosk-dots" id="kioskDots"></div>
+            <div class="kiosk-pad" id="kioskPad">
+                <button class="kiosk-key" data-key="1">1</button>
+                <button class="kiosk-key" data-key="2">2</button>
+                <button class="kiosk-key" data-key="3">3</button>
+                <button class="kiosk-key" data-key="4">4</button>
+                <button class="kiosk-key" data-key="5">5</button>
+                <button class="kiosk-key" data-key="6">6</button>
+                <button class="kiosk-key" data-key="7">7</button>
+                <button class="kiosk-key" data-key="8">8</button>
+                <button class="kiosk-key" data-key="9">9</button>
+                <button class="kiosk-key wide" data-key="clear">Clear</button>
+                <button class="kiosk-key" data-key="0">0</button>
+                <button class="kiosk-key wide" data-key="back">&#9003;</button>
+            </div>
+            <div class="kiosk-actions">
+                <button class="kiosk-btn cancel" id="kioskCancel">Cancel</button>
+                <button class="kiosk-btn submit" id="kioskSubmit" disabled>Open Locker</button>
+            </div>
+        </div>
+        <div id="kioskResultWrap" class="hidden">
+            <div class="kiosk-result" id="kioskResult">
+                <div class="ic" id="kioskResultIcon"></div>
+                <p id="kioskResultText"></p>
+            </div>
+            <button class="kiosk-retry hidden" id="kioskRetry">Try Again</button>
+        </div>
+    </div>
+</div>
+
 <script>
 (function () {
     var RESOURCE = 'as-postalprime';
@@ -391,6 +509,9 @@
     var giftMode = false;
     var giftName = '';
     var wishlist = [];
+    var deliveryMode = 'locker';   // 'locker' | 'home'
+    var homeProps = null;          // null = not loaded yet, otherwise [{key,label,address}]
+    var homePropKey = '';
 
     function post(endpoint, data) {
         return fetch('https://' + RESOURCE + '/' + endpoint, {
@@ -466,6 +587,30 @@
     function cartGrandTotal() {
         return cartTotal() + (isPlus() ? 0 : deliveryFee());
     }
+    function homeEnabled() {
+        return !!(state && state.home && state.home.enabled);
+    }
+    function homeFee() {
+        return (state && state.home) ? (state.home.fee || 0) : 0;
+    }
+    // Checkout total: home delivery has its own single fee (free with Plus) instead of the normal delivery fee.
+    function checkoutTotal() {
+        if (deliveryMode === 'home' && homeEnabled()) return cartTotal() + (isPlus() ? 0 : homeFee());
+        return cartGrandTotal();
+    }
+    function setDeliveryMode(mode) {
+        deliveryMode = mode;
+        if (mode === 'home') {
+            giftMode = false;
+            if (homeProps === null) {
+                post('as-postalprime/properties').then(function (res) {
+                    homeProps = Array.isArray(res) ? res : [];
+                    render();
+                });
+            }
+        }
+        render();
+    }
     function hasPreparingOrder() {
         if (!state) return false;
         return state.orders.some(function (o) { return !o.ready && !o.collected && !o.expired; });
@@ -497,17 +642,37 @@
         toastTimer = setTimeout(function () { toastMsg = null; render(); }, 2600);
     }
 
+    // Cart is saved to the server (debounced) so it survives closing the app.
+    var cartTimer = null;
+    function saveCart() {
+        clearTimeout(cartTimer);
+        cartTimer = setTimeout(function () { post('as-postalprime/saveCart', { cart: Object.assign({}, cart) }); }, 300);
+    }
+
     function addToCart(id, qty) {
         cart[id] = (cart[id] || 0) + qty;
+        saveCart();
         showToast('Added to Cart');
     }
     function setQty(id, qty) {
         if (qty <= 0) { delete cart[id]; } else { cart[id] = qty; }
+        saveCart();
         render();
     }
 
+    var refreshTries = 0;
     function refresh() {
         post('as-postalprime/state').then(function (res) {
+            if (!res || !res.catalog) {
+                // Server callback not ready yet (e.g. the resource just restarted) - try again shortly
+                // rather than showing an empty store.
+                if (refreshTries++ < 8) setTimeout(refresh, 1500);
+                return;
+            }
+            refreshTries = 0;
+            // An empty Lua table comes through JSON as [] (an Array) - items added to an Array as properties
+            // are dropped when it's stringified, which made checkout say "Your cart is empty". Always use a plain object.
+            if (!loaded && res.cart) cart = Array.isArray(res.cart) ? {} : res.cart;
             state = res;
             if (res && res.wishlist) wishlist = res.wishlist;
             loaded = true;
@@ -532,12 +697,17 @@
     }
 
     function placeOrder() {
-        if (!checkoutLocker || cartCount() === 0 || busy) return;
-        if (giftMode && !giftName.trim()) return;
+        var isHome = deliveryMode === 'home' && homeEnabled();
+        if (isHome ? !homePropKey : !checkoutLocker) return;
+        if (cartCount() === 0 || busy) return;
+        if (!isHome && giftMode && !giftName.trim()) return;
         busy = true; render();
         post('as-postalprime/checkout', {
-            lockerId: checkoutLocker, items: cart,
-            giftTo: giftMode ? giftName.trim() : undefined,
+            delivery: isHome ? 'home' : 'locker',
+            lockerId: isHome ? undefined : checkoutLocker,
+            propertyKey: isHome ? homePropKey : undefined,
+            items: Object.assign({}, cart),
+            giftTo: (!isHome && giftMode) ? giftName.trim() : undefined,
         }).then(function (res) {
             busy = false;
             if (!res || !res.ok) {
@@ -554,7 +724,7 @@
             giftName = '';
             tab = wasGift ? 'home' : 'orders';
             render();
-            showToast(wasGift ? ('Gift sent to ' + giftedTo + '!') : 'Order placed! We\'ll text you when it\'s ready.');
+            showToast(wasGift ? ('Gift sent to ' + giftedTo + '!') : (isHome ? 'Order placed! Your courier will drop it at your door.' : 'Order placed! We\'ll text you when it\'s ready.'));
         });
     }
 
@@ -569,6 +739,7 @@
             if (catalogItem(it.id)) { cart[it.id] = (cart[it.id] || 0) + it.qty; added++; }
             else skipped++;
         });
+        saveCart();
         tab = 'cart';
         render();
         if (added === 0) showToast('None of those items are available anymore');
@@ -746,11 +917,37 @@
 
     function renderCheckout() {
         var html = '<div style="padding:14px 12px 0;">';
-        var hasActive = state && state.orders.some(function (o) { return !o.collected && !o.expired; });
+        // Parcels sent by other resources (passport etc.) never stop you ordering.
+        var hasActive = state && state.orders.some(function (o) { return !o.collected && !o.expired && !o.parcel; });
         if (hasActive) {
             html += '<div class="empty-state" style="margin-top:10px;"><div class="big">📦</div>You already have an order on the way.<br>Collect it (or wait for it to expire) before ordering again.</div></div>';
             return html;
         }
+        var homeOn = homeEnabled();
+        var homeMode = homeOn && deliveryMode === 'home';
+        if (homeOn) {
+            html += '<div class="seg">' +
+                '<button class="seg-btn ' + (!homeMode ? 'active' : '') + '" data-mode="locker">📦 Locker pickup</button>' +
+                '<button class="seg-btn ' + (homeMode ? 'active' : '') + '" data-mode="home">🏠 Home delivery</button>' +
+                '</div>';
+        }
+        if (homeMode) {
+            html += '<div class="section-title" style="margin:0 0 8px;">Deliver to</div>';
+            if (homeProps === null) {
+                html += '<div class="home-note">Loading your properties…</div>';
+            } else if (homeProps.length === 0) {
+                html += '<div class="home-note">You don\'t own, rent or have keys to a property yet - pick a locker instead.</div>';
+            } else {
+                html += '<select class="prop-select" id="propSelect">' +
+                    '<option value="">Select a property…</option>' +
+                    homeProps.map(function (p) {
+                        return '<option value="' + p.key + '"' + (homePropKey === p.key ? ' selected' : '') + '>' +
+                            String(p.label).replace(/</g, '&lt;') + '</option>';
+                    }).join('') + '</select>';
+                html += '<div class="home-note">A Postal Prime courier van will bring the parcel to the front door of this property and leave it there until it\'s picked up.</div>';
+            }
+            html += '</div>';
+        } else {
         html += '<div class="section-title" style="margin:0 0 8px;">Choose a pickup locker</div>';
         var lockers = (state && state.lockers) || [];
         lockers.forEach(function (l) {
@@ -763,7 +960,9 @@
                 '<div class="radio"></div></button>';
         });
         html += '</div>';
+        }
 
+        if (!homeMode) {
         html += '<div class="gift-toggle-row">' +
             '<div><div class="label">🎁 Send as a gift</div><div class="sub">Goes to their locker, not yours</div></div>' +
             '<label class="switch"><input type="checkbox" id="giftToggle" ' + (giftMode ? 'checked' : '') + '>' +
@@ -771,17 +970,18 @@
         if (giftMode) {
             html += '<input type="text" class="gift-name-input" id="giftNameInput" placeholder="Recipient\'s in-game name" value="' + giftName.replace(/"/g, '&quot;') + '">';
         }
+        }
 
-        var canPlace = checkoutLocker && !busy && (!giftMode || giftName.trim() !== '');
+        var canPlace = !busy && (homeMode ? !!homePropKey : (checkoutLocker && (!giftMode || giftName.trim() !== '')));
         html += '<div class="summary-card">' +
             '<div class="summary-row"><span>Items (' + cartCount() + ')</span><span>$' + cartTotal().toFixed(2) + '</span></div>' +
-            '<div class="summary-row"><span>Delivery</span>' + (isPlus() ?
+            '<div class="summary-row"><span>' + (homeMode ? 'Home delivery' : 'Delivery') + '</span>' + (isPlus() ?
                 '<span style="color:var(--green);font-weight:700;">FREE with Plus</span>' :
-                '<span>$' + deliveryFee().toFixed(2) + '</span>') + '</div>' +
-            '<div class="summary-row total"><span>Order Total</span><span>$' + cartGrandTotal().toFixed(2) + '</span></div>' +
-            (giftMode ? '<div class="stock-note low" style="margin:4px 12px 0;">You\'re charged - delivery speed/fee follows the recipient\'s own Plus status, so their final total may differ slightly.</div>' : '') +
+                '<span>$' + (homeMode ? homeFee() : deliveryFee()).toFixed(2) + '</span>') + '</div>' +
+            '<div class="summary-row total"><span>Order Total</span><span>$' + checkoutTotal().toFixed(2) + '</span></div>' +
+            (giftMode && !homeMode ? '<div class="stock-note low" style="margin:4px 12px 0;">You\'re charged - delivery speed/fee follows the recipient\'s own Plus status, so their final total may differ slightly.</div>' : '') +
             (isPlus() || giftMode ? '' : '<div class="plus-nudge" data-tab="you">Add Postal Prime Plus for free delivery &amp; faster shipping ›</div>') +
-            '<button class="primary-btn" id="placeOrderBtn" ' + (canPlace ? '' : 'disabled') + '>' + (busy ? 'Placing order…' : (giftMode ? 'Send gift order' : 'Place your order')) + '</button>' +
+            '<button class="primary-btn" id="placeOrderBtn" ' + (canPlace ? '' : 'disabled') + '>' + (busy ? 'Placing order…' : (homeMode ? 'Place home delivery order' : (giftMode ? 'Send gift order' : 'Place your order'))) + '</button>' +
             '<button class="ghost-btn" id="backToCart">Back to Cart</button>' +
             '</div>';
         return html;
@@ -799,21 +999,36 @@
                 var span = Math.max(1, o.readyAt - o.placedAt);
                 var pct = Math.min(100, Math.round((elapsed / span) * 100));
                 var statusClass = o.cancelled ? 'cancelled' : (o.expired ? 'expired' : (o.collected ? 'collected' : (o.ready ? 'ready' : 'preparing')));
-                var statusLabel = o.cancelled ? 'Cancelled & refunded' : (o.expired ? 'Expired & refunded' : (o.collected ? 'Collected' : (o.ready ? 'Ready for pickup' : 'Preparing')));
+                var courierLabels = { board: 'Waiting for a courier', claimed: 'Courier collecting', loaded: 'Out for delivery' };
+                var statusLabel = o.cancelled ? 'Cancelled & refunded' : (o.expired ? 'Expired & refunded' : (o.collected ? 'Collected' : (o.ready ? (o.delivery === 'home' ? 'Delivered' : 'Ready for pickup') : (o.courier ? (courierLabels[o.courier] || 'Preparing') : 'Preparing'))));
                 var html2 = '<div class="order-card">' +
                     '<div class="row1"><div><div class="items">' + itemsLabel + '</div>' +
-                    '<div class="locker">📦 ' + o.lockerLabel + ' · $' + o.total.toFixed(2) + '</div></div>' +
+                    '<div class="locker">' + (o.delivery === 'home' ? '🏠 ' : '📦 ') + o.lockerLabel + ' · $' + o.total.toFixed(2) + '</div></div>' +
                     '<span class="status-pill ' + statusClass + '">' + statusLabel + '</span></div>';
                 if (o.giftedBy) {
                     html2 += '<div class="gifted-note">🎁 Gift from ' + o.giftedBy + '</div>';
                 }
                 if (!o.ready && !o.collected && !o.expired && !o.cancelled) {
-                    html2 += '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
-                    html2 += '<button class="cancel-btn" data-cancel="' + o.id + '" ' + (busy ? 'disabled' : '') + '>Cancel &amp; refund</button>';
+                    if (o.courier) {
+                        var courierNote = o.courier === 'board' ? 'Your order is ready and waiting for a Postal Prime courier to pick it up.'
+                            : (o.courier === 'claimed' ? 'A courier has taken your order and is loading their vehicle.' : (o.delivery === 'home' ? 'Your courier is on the way to your door.' : 'Your courier is on the way to the locker.'));
+                        html2 += '<div class="code-box"><div class="hint" style="margin-top:0;">' + courierNote + '</div></div>';
+                    } else {
+                        html2 += '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
+                    }
+                    if (!o.parcel && (!o.courier || o.courier === 'board')) {
+                        html2 += '<button class="cancel-btn" data-cancel="' + o.id + '" ' + (busy ? 'disabled' : '') + '>Cancel &amp; refund</button>';
+                    }
                 }
                 if (o.ready && !o.collected && !o.expired && o.code) {
                     html2 += '<div class="code-box"><div><div class="label">Pickup Code</div><div class="code">' + o.code + '</div></div>' +
-                        '<div class="hint">Head to ' + o.lockerLabel + ', use the target option on the locker, and enter this code to open it.</div></div>';
+                        '<div class="hint">' + (o.deliveredBy ? 'Delivered by ' + o.deliveredBy + '. ' : '') + 'Head to ' + o.lockerLabel + ', use the target option on the locker, and enter this code to open it.</div></div>';
+                }
+                if (o.delivery === 'home' && o.ready && !o.collected && !o.expired) {
+                    html2 += '<div class="code-box"><div class="hint" style="margin-top:0;">' + (o.deliveredBy ? 'Delivered by ' + o.deliveredBy + '. ' : '') + 'Your parcel is at the front door. Walk up to the box and use the target option to take it - anyone nearby can pick it up, so don\'t leave it there long.</div></div>';
+                }
+                if (o.collected && o.takenBy) {
+                    html2 += '<div class="expired-note">Picked up by ' + o.takenBy + '.</div>';
                 }
                 if (o.expired) {
                     html2 += '<div class="expired-note">This order went uncollected too long and was refunded in full.</div>';
@@ -821,7 +1036,8 @@
                 if (o.cancelled) {
                     html2 += '<div class="expired-note">You cancelled this order and were refunded in full.</div>';
                 }
-                if (o.collected) {
+                // Parcels sent by other resources (passport etc.) aren't purchases: no reviews, no reorder.
+                if (o.collected && !o.takenBy && !o.parcel) {
                     html2 += '<div class="review-prompts">';
                     o.items.forEach(function (it) {
                         if (it.reviewed) {
@@ -1081,7 +1297,7 @@
         });
 
         var goCheckout = document.getElementById('goCheckout');
-        if (goCheckout) goCheckout.onclick = function () { tab = 'checkout'; render(); };
+        if (goCheckout) goCheckout.onclick = function () { deliveryMode = 'locker'; homeProps = null; tab = 'checkout'; render(); };
 
         var backToCart = document.getElementById('backToCart');
         if (backToCart) backToCart.onclick = function () { tab = 'cart'; render(); };
@@ -1091,6 +1307,11 @@
         root.querySelectorAll('[data-locker]').forEach(function (el) {
             el.onclick = function () { checkoutLocker = el.getAttribute('data-locker'); render(); };
         });
+        root.querySelectorAll('[data-mode]').forEach(function (el) {
+            el.onclick = function () { setDeliveryMode(el.getAttribute('data-mode')); };
+        });
+        var propSelect = document.getElementById('propSelect');
+        if (propSelect) propSelect.onchange = function (e) { homePropKey = e.target.value; render(); };
 
         var placeOrderBtn = document.getElementById('placeOrderBtn');
         if (placeOrderBtn) placeOrderBtn.onclick = function () { placeOrder(); };
@@ -1173,10 +1394,120 @@
         refresh();
     }
 
+    // ---------------------------------------------------------- locker keypad ---------------
+    // Runs entirely on THIS page's own root NUI instance (the one client Lua's SendNUIMessage
+    // targets), completely separate from the copy sd-phone embeds in its iframe when the app is
+    // opened on the phone - so this works at the physical locker whether or not the phone app
+    // is open. Replaces the old lib.inputDialog + lib.notify flow in client/main.lua.
+    var kioskEl      = document.getElementById('lockerKeypad');
+    var kioskDotsEl  = document.getElementById('kioskDots');
+    var kioskLabelEl = document.getElementById('kioskLabel');
+    var kioskEntryEl = document.getElementById('kioskEntry');
+    var kioskResultWrapEl = document.getElementById('kioskResultWrap');
+    var kioskResultEl     = document.getElementById('kioskResult');
+    var kioskResultIconEl = document.getElementById('kioskResultIcon');
+    var kioskResultTextEl = document.getElementById('kioskResultText');
+    var kioskRetryEl  = document.getElementById('kioskRetry');
+    var kioskSubmitEl = document.getElementById('kioskSubmit');
+    var kioskCode = '';
+    var kioskOpen = false;
+
+    function renderKioskDots(err) {
+        var html = '';
+        for (var i = 0; i < 6; i++) {
+            var cls = 'kiosk-dot' + (i < kioskCode.length ? ' filled' : '') + (err ? ' err' : '');
+            html += '<div class="' + cls + '"></div>';
+        }
+        kioskDotsEl.innerHTML = html;
+        kioskSubmitEl.disabled = kioskCode.length !== 6;
+    }
+
+    function showLockerKeypad(label) {
+        kioskOpen = true;
+        kioskCode = '';
+        kioskLabelEl.textContent = label || 'Locker';
+        kioskEntryEl.classList.remove('hidden');
+        kioskResultWrapEl.classList.add('hidden');
+        kioskRetryEl.classList.add('hidden');
+        renderKioskDots(false);
+        kioskEl.classList.remove('hidden');
+        document.body.classList.add('kiosk-only');
+        document.documentElement.style.visibility = 'visible';
+        document.body.style.visibility = 'visible';
+    }
+
+    function hideLockerKeypad() {
+        kioskOpen = false;
+        kioskEl.classList.add('hidden');
+        document.body.classList.remove('kiosk-only');
+        // This root instance is never used for the phone-app screen (sd-phone only ever embeds
+        // a SEPARATE copy of this page in its own iframe for that), so it's always safe to hide
+        // again once the keypad closes.
+        document.documentElement.style.visibility = 'hidden';
+        document.body.style.visibility = 'hidden';
+    }
+
+    function submitKioskCode() {
+        if (kioskCode.length !== 6) return;
+        kioskSubmitEl.disabled = true;
+        post('as-postalprime/locker:submit', { code: kioskCode }).then(function (res) {
+            kioskEntryEl.classList.add('hidden');
+            kioskResultWrapEl.classList.remove('hidden');
+            if (res && res.ok) {
+                kioskResultEl.className = 'kiosk-result ok';
+                kioskResultIconEl.innerHTML = '&#10003;';
+                kioskResultTextEl.textContent = 'Locker door opened - grab your parcel!';
+                kioskRetryEl.classList.add('hidden');
+                setTimeout(closeKiosk, 1600);
+            } else {
+                kioskResultEl.className = 'kiosk-result err';
+                kioskResultIconEl.innerHTML = '&#10005;';
+                kioskResultTextEl.textContent = (res && res.error) || 'Failed to open locker';
+                kioskRetryEl.classList.remove('hidden');
+            }
+        });
+    }
+
+    function closeKiosk() {
+        if (!kioskOpen) return;
+        post('as-postalprime/locker:close', {});
+        hideLockerKeypad();
+    }
+
+    document.getElementById('kioskPad').addEventListener('click', function (e) {
+        var key = e.target && e.target.getAttribute('data-key');
+        if (!key) return;
+        if (key === 'back') kioskCode = kioskCode.slice(0, -1);
+        else if (key === 'clear') kioskCode = '';
+        else if (kioskCode.length < 6) kioskCode += key;
+        renderKioskDots(false);
+    });
+
+    document.getElementById('kioskSubmit').addEventListener('click', submitKioskCode);
+    document.getElementById('kioskCancel').addEventListener('click', closeKiosk);
+    document.getElementById('kioskClose').addEventListener('click', closeKiosk);
+    kioskRetryEl.addEventListener('click', function () {
+        kioskCode = '';
+        kioskResultWrapEl.classList.add('hidden');
+        kioskEntryEl.classList.remove('hidden');
+        renderKioskDots(false);
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (!kioskOpen) return;
+        if (e.key === 'Escape') { closeKiosk(); return; }
+        if (!kioskEntryEl.classList.contains('hidden')) {
+            if (e.key >= '0' && e.key <= '9' && kioskCode.length < 6) { kioskCode += e.key; renderKioskDots(false); }
+            else if (e.key === 'Backspace') { kioskCode = kioskCode.slice(0, -1); renderKioskDots(false); }
+            else if (e.key === 'Enter') { submitKioskCode(); }
+        }
+    });
+
     window.addEventListener('message', function (event) {
         if (event.data === 'componentsLoaded') { showApp(); return; }
         var data = event.data;
         if (!data || typeof data !== 'object') return;
+        if (data.action === 'as-postalprime:keypad:show') { showLockerKeypad(data.label); return; }
         if (!shown) return;
         if (data.action === 'as-postalprime:updated') { refresh(); return; }
     });
@@ -1186,5 +1517,6 @@
     });
 })();
 </script>
+<script src="courier.js"></script>
 </body>
 </html>

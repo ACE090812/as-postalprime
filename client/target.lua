@@ -20,17 +20,19 @@ local system = detect()
 
 -- Adds a target option to a specific entity (the locker wall prop). Returns nothing - removed
 -- later by entity, not by an id, same as both underlying APIs expect for entity targets.
-function PPTarget.addEntity(entity, name, icon, label, distance, onSelect)
+-- canInteract (optional): function() -> boolean, checked every time the option would show.
+function PPTarget.addEntity(entity, name, icon, label, distance, onSelect, canInteract)
     if system == 'qb-target' then
         exports['qb-target']:AddTargetEntity(entity, {
             options = {
-                { icon = icon, label = label, action = onSelect },
+                { icon = icon, label = label, action = onSelect, canInteract = canInteract and function() return canInteract() end or nil },
             },
             distance = distance,
         })
     else
         exports.ox_target:addLocalEntity(entity, {
-            { name = name, icon = icon, label = label, distance = distance, onSelect = onSelect },
+            { name = name, icon = icon, label = label, distance = distance, onSelect = onSelect,
+              canInteract = canInteract and function() return canInteract() end or nil },
         })
     end
 end
@@ -45,7 +47,7 @@ end
 
 -- Adds a free-floating circular/sphere zone (the "Take Parcel" point). Returns a zone id/name
 -- to pass back into PPTarget.removeZone later.
-function PPTarget.addSphereZone(name, coords, radius, icon, label, distance, onSelect)
+function PPTarget.addSphereZone(name, coords, radius, icon, label, distance, onSelect, canInteract)
     if system == 'qb-target' then
         exports['qb-target']:AddCircleZone(name, coords, radius, {
             name = name,
@@ -53,7 +55,7 @@ function PPTarget.addSphereZone(name, coords, radius, icon, label, distance, onS
             useZ = true,
         }, {
             options = {
-                { icon = icon, label = label, action = onSelect },
+                { icon = icon, label = label, action = onSelect, canInteract = canInteract and function() return canInteract() end or nil },
             },
             distance = distance,
         })
@@ -64,7 +66,8 @@ function PPTarget.addSphereZone(name, coords, radius, icon, label, distance, onS
         coords = coords,
         radius = radius,
         options = {
-            { name = name, icon = icon, label = label, distance = distance, onSelect = onSelect },
+            { name = name, icon = icon, label = label, distance = distance, onSelect = onSelect,
+              canInteract = canInteract and function() return canInteract() end or nil },
         },
     })
 end

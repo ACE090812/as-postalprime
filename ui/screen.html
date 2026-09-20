@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Postal Prime locker screen</title>
+<style>
+    /* Rendered by a DUI onto the locker prop's screen texture (see client/screen.lua).
+       Lua owns all state and layout and pushes it here via SendDuiMessage - this page only draws.
+       No NUI callbacks exist in a DUI, so there is deliberately no fetch/post in here. */
+    :root {
+        --navy: #1a4fb4; --red: #e21f2b; --text: #0f1111; --dim: #565959;
+        --surface: #f4f4f4; --hairline: #e3e6e6; --green: #067d62;
+        --u: 1px; /* set from JS: 1 unit = screen height / 1000 */
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+        width: 100%; height: 100%; overflow: hidden; background: var(--navy);
+        font-family: Arial, Helvetica, sans-serif; user-select: none;
+    }
+
+    /* Optional: drop the original aslocker_diffuse_2 texture (exported as PNG) next to this file as
+       screen_bg.png and the idle view shows it exactly as it looked before the swap. */
+    #bgfull { position: absolute; inset: 0; width: 100%; height: 100%; display: none; }
+
+    #screen { position: absolute; left: 0; top: 0; width: 77.5%; height: 100%; overflow: hidden; }
+    body.debug #screen { outline: calc(var(--u) * 4) solid magenta; outline-offset: calc(var(--u) * -4); }
+
+    /* fallback idle (used when screen_bg.png isn't present) */
+    #idle {
+        position: absolute; inset: 0; background: #0b0d12; color: #fff;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    }
+    #idle img { width: 70%; margin-bottom: calc(var(--u) * 20); }
+    #idle .sub { font-size: calc(var(--u) * 34); font-weight: 700; }
+    #idle .touch { margin-top: calc(var(--u) * 110); font-size: calc(var(--u) * 24); font-weight: 700; letter-spacing: 0.04em; }
+    #idle .hand { font-size: calc(var(--u) * 120); color: var(--navy); margin-top: calc(var(--u) * 70); }
+    body.hasbg #idle { display: none; }
+
+    /* keypad / result */
+    #ui { position: absolute; inset: 0; background: #fff; display: none; }
+    body.active #ui { display: block; }
+    body.active #bgfull { display: none !important; }
+
+    .head {
+        position: absolute; left: 0; top: 0; width: 100%; height: 23.5%; background: var(--navy);
+        border-top: calc(var(--u) * 8) solid var(--red); color: #fff; text-align: center;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .head img { height: calc(var(--u) * 50); filter: brightness(0) invert(1); margin-bottom: calc(var(--u) * 14); }
+    .head h2 { font-size: calc(var(--u) * 38); font-weight: 800; }
+    .head p { font-size: calc(var(--u) * 24); color: #cfe0ff; margin-top: calc(var(--u) * 6); }
+
+    .dots { position: absolute; left: 0; width: 100%; top: 26%; display: flex; justify-content: center; gap: calc(var(--u) * 26); }
+    .dot { width: calc(var(--u) * 34); height: calc(var(--u) * 34); border-radius: 50%; border: calc(var(--u) * 4) solid var(--navy); background: #fff; }
+    .dot.filled { background: var(--navy); transform: scale(1.1); }
+
+    .btn {
+        position: absolute; display: flex; align-items: center; justify-content: center;
+        border-radius: calc(var(--u) * 22); font-weight: 800; background: var(--surface); color: var(--text);
+    }
+    .btn.key { font-size: calc(var(--u) * 46); font-weight: 700; }
+    .btn.keysmall { font-size: calc(var(--u) * 28); color: var(--dim); font-weight: 700; }
+    .btn.cancel { font-size: calc(var(--u) * 32); }
+    .btn.submit { background: var(--red); color: #fff; font-size: calc(var(--u) * 32); }
+    .btn.close { background: rgba(255,255,255,0.22); color: #fff; font-size: calc(var(--u) * 30); border-radius: 999px; }
+    .btn.off { opacity: 0.4; }
+    .btn.hover:not(.off) { background: #dfe6f5; box-shadow: 0 0 0 calc(var(--u) * 4) var(--navy) inset; }
+    .btn.submit.hover:not(.off) { background: #b3121d; box-shadow: none; }
+    .btn.close.hover { background: rgba(255,255,255,0.4); box-shadow: none; }
+
+    .result { position: absolute; left: 0; width: 100%; top: 34%; text-align: center; padding: 0 8%; }
+    .result .ic {
+        width: calc(var(--u) * 150); height: calc(var(--u) * 150); border-radius: 50%; margin: 0 auto calc(var(--u) * 30);
+        display: flex; align-items: center; justify-content: center; font-size: calc(var(--u) * 84); color: #fff;
+    }
+    .result.ok .ic { background: var(--green); }
+    .result.err .ic { background: var(--red); }
+    .result p { font-size: calc(var(--u) * 34); font-weight: 700; color: var(--text); }
+
+    #cursor {
+        position: absolute; width: calc(var(--u) * 44); height: calc(var(--u) * 44); display: none; pointer-events: none;
+        transform: translate(-12%, -6%); filter: drop-shadow(0 calc(var(--u) * 2) calc(var(--u) * 3) rgba(0,0,0,.5));
+    }
+    body.active #cursor { display: block; }
+</style>
+</head>
+<body>
+<img id="bgfull" src="screen_bg.png" alt="">
+<div id="screen">
+    <div id="idle">
+        <img src="logo.png" alt="Postal Prime">
+        <div class="sub">Collect your order.</div>
+        <div class="hand">&#9757;</div>
+        <div class="touch">TOUCH SCREEN TO START</div>
+    </div>
+    <div id="ui"></div>
+    <svg id="cursor" viewBox="0 0 24 24"><path d="M4 2 L4 19 L8.6 14.8 L11.6 21.5 L14.2 20.3 L11.2 13.8 L17.5 13.8 Z" fill="#fff" stroke="#000" stroke-width="1.4" stroke-linejoin="round"/></svg>
+</div>
+<script>
+(function () {
+    var bg = document.getElementById('bgfull');
+    var screenEl = document.getElementById('screen');
+    var ui = document.getElementById('ui');
+    var cursor = document.getElementById('cursor');
+
+    bg.onload = function () { bg.style.display = 'block'; document.body.classList.add('hasbg'); };
+
+    function pct(n) { return (n * 100) + '%'; }
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+    function applyRect(r) {
+        screenEl.style.left = pct(r.x); screenEl.style.top = pct(r.y);
+        screenEl.style.width = pct(r.w); screenEl.style.height = pct(r.h);
+        // 1 unit = 1/1000 of the screen height in px
+        document.documentElement.style.setProperty('--u', (window.innerHeight * r.h / 1000) + 'px');
+    }
+    applyRect({ x: 0, y: 0, w: 0.775, h: 1 });
+
+    function render(d) {
+        if (d.view === 'idle' || !d.view) {
+            document.body.classList.remove('active');
+            ui.innerHTML = '';
+            return;
+        }
+        document.body.classList.add('active');
+
+        var code = d.code || '';
+        var html = '';
+
+        if (d.view === 'entry') {
+            html += '<div class="head"><img src="logo.png" alt=""><h2>' + esc(d.label) + '</h2><p>Enter your 6-digit pickup code</p></div>';
+            html += '<div class="dots">';
+            for (var i = 0; i < 6; i++) html += '<div class="dot' + (i < code.length ? ' filled' : '') + '"></div>';
+            html += '</div>';
+        } else {
+            html += '<div class="head"><img src="logo.png" alt=""><h2>' + esc(d.label) + '</h2></div>';
+            html += '<div class="result ' + (d.ok ? 'ok' : 'err') + '"><div class="ic">' + (d.ok ? '&#10003;' : '&#10005;') + '</div><p>' + esc(d.msg) + '</p></div>';
+        }
+
+        (d.buttons || []).forEach(function (b) {
+            var off = (b.id === 'submit' && (code.length !== 6 || d.busy)) ? ' off' : '';
+            var hov = (d.hover === b.id) ? ' hover' : '';
+            html += '<div class="btn ' + esc(b.kind) + off + hov + '" style="left:' + pct(b.x) + ';top:' + pct(b.y) + ';width:' + pct(b.w) + ';height:' + pct(b.h) + '">' + esc(b.label) + '</div>';
+        });
+
+        ui.innerHTML = html;
+
+        if (d.cursor) { cursor.style.left = pct(d.cursor.x); cursor.style.top = pct(d.cursor.y); }
+    }
+
+    window.addEventListener('message', function (e) {
+        var d = e.data;
+        if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_) { return; } }
+        if (!d || typeof d !== 'object') return;
+        if (d.action === 'init') {
+            if (d.rect) applyRect(d.rect);
+            document.body.classList.toggle('debug', !!d.debug);
+            return;
+        }
+        render(d);
+    });
+})();
+</script>
+</body>
+</html>

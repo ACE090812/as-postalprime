@@ -143,13 +143,13 @@ function PPBridge.getItemCount(source, item)
     return 0
 end
 
-function PPBridge.addItem(source, item, count)
+function PPBridge.addItem(source, item, count, metadata)
     count = count or 1
     if inventory == 'ox_inventory' then
-        local ok, result = pcall(function() return exports.ox_inventory:AddItem(source, item, count) end)
+        local ok, result = pcall(function() return exports.ox_inventory:AddItem(source, item, count, metadata) end)
         return ok and result and true or false
     elseif inventory == 'qb-inventory' then
-        local ok = pcall(function() exports['qb-inventory']:AddItem(source, item, count) end)
+        local ok = pcall(function() exports['qb-inventory']:AddItem(source, item, count, false, metadata) end)
         return ok
     end
     return false
@@ -165,6 +165,25 @@ function PPBridge.removeItem(source, item, count)
         return ok
     end
     return false
+end
+
+-- The player's framework job name (e.g. 'postalprime') or nil. Used by the courier job.
+function PPBridge.getJob(source)
+    ensureCore()
+    if framework == 'qb' and QBCore then
+        local Player = QBCore.Functions.GetPlayer(source)
+        local job = Player and Player.PlayerData.job
+        return job and job.name or nil
+    elseif framework == 'qbx' and qbxExport then
+        local Player = qbxExport:GetPlayer(source)
+        local job = Player and Player.PlayerData.job
+        return job and job.name or nil
+    elseif framework == 'esx' and ESX then
+        local xPlayer = ESX.GetPlayerFromId(source)
+        local job = xPlayer and (xPlayer.job or (xPlayer.getJob and xPlayer.getJob()))
+        return job and job.name or nil
+    end
+    return nil
 end
 
 return PPBridge
