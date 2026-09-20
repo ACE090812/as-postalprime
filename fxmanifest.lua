@@ -11,6 +11,8 @@ shared_script '@ox_lib/init.lua'
 
 shared_scripts {
     'config.lua',
+    'shared/locale.lua', -- T() helper (client + server)
+    'locales/*.lua',     -- language files, picked with Config.locale
 }
 
 server_scripts {

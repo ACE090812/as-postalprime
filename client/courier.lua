@@ -5,7 +5,6 @@
 
 local function cfg() return Config.courier or {} end
 
-local SIZE_LABEL = { s = 'Small', m = 'Medium', l = 'Large', xl = 'X-Large' }
 local CARRY_DICT, CARRY_ANIM = 'anim@heists@box_carry@', 'idle'
 
 local S = {
@@ -19,14 +18,14 @@ local S = {
 }
 
 local function notify(desc, kind, title)
-    SendNUIMessage({ action = 'as-postalprime:toast', title = title or 'Postal Prime Courier', description = desc, type = kind or 'inform' })
+    SendNUIMessage({ action = 'as-postalprime:toast', title = title or T('courier.name'), description = desc, type = kind or 'inform' })
 end
 
 -- Server-side toasts (courier messages, order cancelled / collected...)
 RegisterNetEvent('as-postalprime:toast')
 AddEventHandler('as-postalprime:toast', function(data)
     if type(data) ~= 'table' then return end
-    SendNUIMessage({ action = 'as-postalprime:toast', title = data.title or 'Postal Prime', description = data.description or '', type = data.type or 'inform' })
+    SendNUIMessage({ action = 'as-postalprime:toast', title = data.title or T('app.name'), description = data.description or '', type = data.type or 'inform' })
 end)
 
 local function fmtTime(sec)
@@ -118,7 +117,7 @@ local function pickParcel(items)
     if pickPromise then return nil end
     pickPromise = promise.new()
     SetNuiFocus(true, true)
-    SendNUIMessage({ action = 'as-postalprime:courier:pick', title = 'Take which parcel?', items = items })
+    SendNUIMessage({ action = 'as-postalprime:courier:pick', title = T('courier.pick.title'), items = items })
     local id = Citizen.Await(pickPromise)
     pickPromise = nil
     SetNuiFocus(false, false)
@@ -165,7 +164,7 @@ local function startCarry(orderId, size, stage, doorCoords, kind)
     local hash = joaat('asparcel_' .. (size or 'm'))
     if not IsModelValid(hash) then hash = joaat('prop_cs_cardbox_01') end
     if not pcall(lib.requestModel, hash, 5000) then
-        notify('Couldn\'t load the parcel model.', 'error')
+        notify(T('courier.msg.modelFail'), 'error')
         TriggerServerEvent('as-postalprime:courier:dropCarry')
         return
     end
@@ -187,14 +186,14 @@ local function startCarry(orderId, size, stage, doorCoords, kind)
     if stage == 'door' and doorCoords then
         S.doorZone = PPTarget.addSphereZone(
             'as-postalprime:courier_door', vector3(doorCoords.x, doorCoords.y, doorCoords.z), 1.8,
-            'fa-solid fa-box', 'Place Parcel', 3.5, function() placeParcel() end,
+            'fa-solid fa-box', T('target.placeParcel'), 3.5, function() placeParcel() end,
             function() return S.carry ~= nil and S.carry.stage == 'door' end
         )
     end
 
-    notify(stage == 'pile' and 'Carry the parcel to your vehicle. Press X to put it down.'
-        or (kind == 'locker' and 'Carry the parcel to the locker. Press X to put it down.'
-            or 'Carry the parcel to the door. Press X to put it down.'))
+    notify(stage == 'pile' and T('courier.msg.carryVehicle')
+        or (kind == 'locker' and T('courier.msg.carryLocker')
+            or T('courier.msg.carryDoor')))
 
     CreateThread(function()
         while S.carry == me do
@@ -207,7 +206,7 @@ local function startCarry(orderId, size, stage, doorCoords, kind)
             local p = PlayerPedId()
             if IsEntityDead(p) or IsPedInAnyVehicle(p, true) or IsPedGettingIntoAVehicle(p) then
                 clearCarry(true)
-                notify('You put the parcel down.')
+                notify(T('courier.msg.putDown'))
                 break
             end
             if not me.busy and not IsEntityPlayingAnim(p, CARRY_DICT, CARRY_ANIM, 3) then
@@ -219,12 +218,12 @@ end
 
 lib.addKeybind({
     name = 'pp_courier_drop',
-    description = 'Postal Prime: put the parcel down',
+    description = T('keybind.dropParcel'),
     defaultKey = 'X',
     onPressed = function()
         if S.carry and not S.carry.busy then
             clearCarry(true)
-            notify('You put the parcel down.')
+            notify(T('courier.msg.putDown'))
         end
     end,
 })
@@ -259,7 +258,7 @@ RegisterNetEvent('as-postalprime:courier:carryClear')
 AddEventHandler('as-postalprime:courier:carryClear', function()
     if S.carry then
         clearCarry(false)
-        notify('That parcel was taken off you.', 'error')
+        notify(T('courier.msg.takenOff'), 'error')
     end
 end)
 
@@ -270,7 +269,7 @@ AddEventHandler('as-postalprime:courier:printCoords', function()
     local txt = ('vector4(%.2f, %.2f, %.2f, %.1f)'):format(p.x, p.y, p.z, h)
     print('[as-postalprime] ' .. txt)
     pcall(lib.setClipboard, txt)
-    notify('Copied: ' .. txt, 'inform', 'Postal Prime')
+    notify(T('courier.msg.copied', txt), 'inform', T('app.name'))
 end)
 
 -- ─── delivering ──────────────────────────────────────────────────────────────
@@ -280,7 +279,7 @@ placeParcel = function()
     if not c or c.stage ~= 'door' or c.busy then return end
     c.busy = true
     local ok = progress({
-        duration = 1800, label = 'Placing parcel', canCancel = true, useWhileDead = false,
+        duration = 1800, label = T('courier.progress.placing'), canCancel = true, useWhileDead = false,
         disable = { move = true, car = true, combat = true },
         anim = { dict = 'pickup_object', clip = 'pickup_low' },
     })
@@ -289,17 +288,17 @@ placeParcel = function()
     local res = lib.callback.await('as-postalprime:courier:deliver', false, c.orderId)
     if not res or not res.ok then
         c.busy = false
-        notify((res and res.error) or 'Couldn\'t deliver that parcel.', 'error')
+        notify((res and res.error) or T('courier.msg.placeFail'), 'error')
         return
     end
 
     clearCarry(false)
-    local msg = ('Paid $%d  ·  +%d XP'):format(res.pay, res.xp)
+    local msg = T('courier.msg.paid', res.pay, res.xp)
     if res.late and res.late > 0 then
-        msg = ('%s\nLate by %s - pay cut from $%d'):format(msg, fmtTime(res.late), res.full)
+        msg = msg .. '\n' .. T('courier.msg.late', fmtTime(res.late), res.full)
     end
-    notify(msg, 'success', 'Parcel delivered')
-    if res.levelUp then notify(('You reached courier level %d!'):format(res.level), 'success', 'Level up') end
+    notify(msg, 'success', T('courier.msg.deliveredTitle'))
+    if res.levelUp then notify(T('courier.msg.levelUp', res.level), 'success', T('courier.msg.levelUpTitle')) end
     refresh()
 end
 
@@ -309,7 +308,7 @@ local function loadIntoVehicle()
     if not c or c.stage ~= 'pile' or c.busy then return end
     c.busy = true
     local ok = progress({
-        duration = 2200, label = 'Loading parcel', canCancel = true, useWhileDead = false,
+        duration = 2200, label = T('courier.progress.loading'), canCancel = true, useWhileDead = false,
         disable = { move = true, car = true, combat = true },
         anim = { dict = 'pickup_object', clip = 'pickup_low' },
     })
@@ -318,7 +317,7 @@ local function loadIntoVehicle()
     local res = lib.callback.await('as-postalprime:courier:load', false, c.orderId)
     if not res or not res.ok then
         c.busy = false
-        notify((res and res.error) or 'Couldn\'t load that.', 'error')
+        notify((res and res.error) or T('courier.msg.loadFail'), 'error')
         return
     end
     clearCarry(false)
@@ -326,19 +325,19 @@ local function loadIntoVehicle()
     local d = S.data
     local left = 0
     for _, cl in ipairs(d and d.claims or {}) do if cl.state == 'claimed' then left = left + 1 end end
-    notify(left > 0 and ('Loaded. %d more to collect from the pile.'):format(left)
-        or 'All loaded - follow the GPS to the first stop.', 'success')
+    notify(left > 0 and T('courier.msg.loadedMore', left)
+        or T('courier.msg.loadedAll'), 'success')
 end
 
 local function takeParcel(claim)
     local ok = progress({
-        duration = 1500, label = 'Taking parcel out', canCancel = true, useWhileDead = false,
+        duration = 1500, label = T('courier.progress.taking'), canCancel = true, useWhileDead = false,
         disable = { move = true, car = true, combat = true },
     })
     if not ok then return end
     local res = lib.callback.await('as-postalprime:courier:takeFromVehicle', false, claim.orderId)
     if not res or not res.ok then
-        notify((res and res.error) or 'Couldn\'t take that out.', 'error')
+        notify((res and res.error) or T('courier.msg.takeFail'), 'error')
         return
     end
     startCarry(claim.orderId, res.size, 'door', res.coords, res.kind)
@@ -354,7 +353,7 @@ local function onVehicleParcels()
         if S.carry.busy then return end
         if S.carry.stage == 'pile' then return loadIntoVehicle() end
         clearCarry(true)
-        notify('You put the parcel back in the vehicle.')
+        notify(T('courier.msg.putBack'))
         return
     end
 
@@ -364,7 +363,7 @@ local function onVehicleParcels()
         if c.state == 'loaded' then loaded[#loaded + 1] = c end
     end
     if #loaded == 0 then
-        notify('Nothing is loaded. Collect parcels from the pile at the depot first.')
+        notify(T('courier.msg.nothingLoaded'))
         return
     end
     table.sort(loaded, function(a, b) return distTo(a.coords) < distTo(b.coords) end)
@@ -391,7 +390,7 @@ end
 local function registerVehicleTarget(veh)
     if S.vehicle and S.vehicle ~= veh then pcall(PPTarget.removeEntity, S.vehicle) end
     S.vehicle = veh
-    PPTarget.addEntity(veh, 'as-postalprime:courier_veh', 'fa-solid fa-box-open', 'Parcels', 4.0, onVehicleParcels)
+    PPTarget.addEntity(veh, 'as-postalprime:courier_veh', 'fa-solid fa-box-open', T('target.vehicleParcels'), 4.0, onVehicleParcels)
 end
 
 local function pickSpawn()
@@ -419,7 +418,7 @@ end
 local function rentVehicle(v)
     local res = lib.callback.await('as-postalprime:courier:rent', false, v.key)
     if not res or not res.ok then
-        notify((res and res.error) or 'Couldn\'t rent that.', 'error')
+        notify((res and res.error) or T('courier.msg.rentFail'), 'error')
         return false
     end
 
@@ -431,16 +430,16 @@ local function rentVehicle(v)
     end
 
     local sp = pickSpawn()
-    if not sp then return fail('Every bay is busy - deposit refunded. Try again in a moment.') end
+    if not sp then return fail(T('courier.msg.baysBusy')) end
 
     local hash = joaat(res.model)
     if not IsModelInCdimage(hash) or not pcall(lib.requestModel, hash, 8000) then
-        return fail('That vehicle model isn\'t available - deposit refunded.')
+        return fail(T('courier.msg.modelMissing'))
     end
 
     local veh = CreateVehicle(hash, sp.x, sp.y, sp.z, sp.w, true, false)
     SetModelAsNoLongerNeeded(hash)
-    if not veh or veh == 0 then return fail('The vehicle wouldn\'t spawn - deposit refunded.') end
+    if not veh or veh == 0 then return fail(T('courier.msg.noSpawn')) end
 
     local deadline = GetGameTimer() + 5000
     while not NetworkGetEntityIsNetworked(veh) and GetGameTimer() < deadline do Wait(50) end
@@ -455,7 +454,7 @@ local function rentVehicle(v)
     local reg = lib.callback.await('as-postalprime:courier:registerVehicle', false, netId)
     if not reg or not reg.ok then
         if DoesEntityExist(veh) then DeleteEntity(veh) end
-        notify((reg and reg.error) or 'Couldn\'t register the vehicle.', 'error')
+        notify((reg and reg.error) or T('courier.msg.registerFail'), 'error')
         refresh()
         return false
     end
@@ -464,7 +463,7 @@ local function rentVehicle(v)
     registerVehicleTarget(veh)
     -- Fuel scripts often initialise a fresh vehicle a moment after it spawns - top it up again.
     CreateThread(function() Wait(1500) if DoesEntityExist(veh) then setFuelFull(veh) end end)
-    notify(('%s ready in the bay - plate %s. Your key is in your inventory.'):format(v.label, res.plate), 'success')
+    notify(T('courier.msg.vehicleReady', v.label, res.plate), 'success')
     return true
 end
 
@@ -494,7 +493,7 @@ end)
 
 local function toggleDuty(on)
     local res = lib.callback.await('as-postalprime:courier:duty', false, on)
-    if not res or not res.ok then notify((res and res.error) or 'Couldn\'t do that.', 'error') end
+    if not res or not res.ok then notify((res and res.error) or T('courier.msg.dutyFail'), 'error') end
     refresh()
 end
 
@@ -503,7 +502,7 @@ local function nui(name, fn)
         local ok, res = pcall(fn, data or {})
         if not ok then
             print(('[as-postalprime] courier:%s failed: %s'):format(name, tostring(res)))
-            notify('Something went wrong - try again.', 'error')
+            notify(T('courier.msg.wentWrong'), 'error')
             res = { ok = false }
             pcall(refresh)
         end
@@ -544,7 +543,7 @@ end)
 
 nui('return', function()
     local r = lib.callback.await('as-postalprime:courier:return', false)
-    if not (r and r.ok) then notify((r and r.error) or 'Couldn\'t return it.', 'error') end
+    if not (r and r.ok) then notify((r and r.error) or T('courier.msg.returnFail'), 'error') end
     if S.vehicle then pcall(PPTarget.removeEntity, S.vehicle) S.vehicle = nil end
     refresh()
     return { ok = r and r.ok == true }
@@ -553,9 +552,9 @@ end)
 nui('claim', function(d)
     local r = lib.callback.await('as-postalprime:courier:claim', false, d.orderId)
     if r and r.ok then
-        notify('Claimed. Collect the parcel from the pile, load it, then deliver.', 'success')
+        notify(T('courier.msg.claimed'), 'success')
     else
-        notify((r and r.error) or 'Couldn\'t claim that.', 'error')
+        notify((r and r.error) or T('courier.msg.claimFail'), 'error')
     end
     refresh()
     return { ok = r and r.ok == true }
@@ -563,7 +562,7 @@ end)
 
 nui('unclaim', function(d)
     local r = lib.callback.await('as-postalprime:courier:unclaim', false, d.orderId)
-    if not (r and r.ok) then notify((r and r.error) or 'Couldn\'t put that back.', 'error') end
+    if not (r and r.ok) then notify((r and r.error) or T('courier.msg.unclaimFail'), 'error') end
     refresh()
     return { ok = r and r.ok == true }
 end)
@@ -579,9 +578,9 @@ local function openDepot()
     if S.uiOpen then return end
     refresh()
     local d = S.data
-    if not d or not d.ok then notify('The courier job isn\'t available right now.', 'error', 'Postal Prime Depot') return end
+    if not d or not d.ok then notify(T('courier.msg.jobUnavailable'), 'error', T('courier.depotName')) return end
     if not d.isCourier then
-        notify('You need the Postal Prime job to work from the depot.', 'error', 'Postal Prime Depot')
+        notify(T('courier.msg.needJob'), 'error', T('courier.depotName'))
         return
     end
     S.uiOpen = true
@@ -592,12 +591,12 @@ end
 -- ─── pile ────────────────────────────────────────────────────────────────────
 
 local function onPile()
-    if S.carry then notify('You\'re already carrying a parcel.') return end
+    if S.carry then notify(T('courier.msg.alreadyCarrying')) return end
     local res = lib.callback.await('as-postalprime:courier:pickPile', false)
-    if not res or not res.ok then notify((res and res.error) or 'Nothing to collect.', 'error') return end
+    if not res or not res.ok then notify((res and res.error) or T('courier.msg.nothingToCollect'), 'error') return end
 
     local ok = progress({
-        duration = 1200, label = 'Picking up parcel', canCancel = true, useWhileDead = false,
+        duration = 1200, label = T('courier.progress.picking'), canCancel = true, useWhileDead = false,
         disable = { move = true, car = true, combat = true },
         anim = { dict = 'pickup_object', clip = 'pickup_low' },
     })
@@ -625,17 +624,17 @@ CreateThread(function()
         SetBlipScale(depotBlip, dep.blip.scale or 0.8)
         SetBlipAsShortRange(depotBlip, true)
         BeginTextCommandSetBlipName('STRING')
-        AddTextComponentSubstringPlayerName(dep.blip.label or 'Postal Prime Depot')
+        AddTextComponentSubstringPlayerName(dep.blip.label or T('courier.depotName'))
         EndTextCommandSetBlipName(depotBlip)
     end
 
     zones[#zones + 1] = PPTarget.addSphereZone(
         'as-postalprime:courier_desk', vector3(desk.x, desk.y, desk.z), 1.5,
-        'fa-solid fa-truck-fast', 'Postal Prime Depot', 3.0, openDepot)
+        'fa-solid fa-truck-fast', T('target.depot'), 3.0, openDepot)
 
     zones[#zones + 1] = PPTarget.addSphereZone(
         'as-postalprime:courier_pile', vector3(pile.x, pile.y, pile.z), 1.8,
-        'fa-solid fa-box', 'Collect Parcel', 3.0, onPile,
+        'fa-solid fa-box', T('target.collectParcel'), 3.0, onPile,
         function() return onDuty() and S.data.rental ~= nil and S.carry == nil end)
 
     Wait(2500)
@@ -696,7 +695,7 @@ local function setRoute(coords, label)
     SetBlipRoute(S.blip, true)
     SetBlipRouteColour(S.blip, 5)
     BeginTextCommandSetBlipName('STRING')
-    AddTextComponentSubstringPlayerName(label or 'Delivery')
+    AddTextComponentSubstringPlayerName(label or T('route.delivery'))
     EndTextCommandSetBlipName(S.blip)
 end
 
@@ -713,7 +712,7 @@ CreateThread(function()
             elseif S.carry and S.carry.stage == 'pile' then
                 if S.vehicle and DoesEntityExist(S.vehicle) then
                     local vc = GetEntityCoords(S.vehicle)
-                    target, label = { x = vc.x, y = vc.y, z = vc.z }, 'Your vehicle'
+                    target, label = { x = vc.x, y = vc.y, z = vc.z }, T('route.vehicle')
                 end
             else
                 local best, bestD
@@ -730,7 +729,7 @@ CreateThread(function()
                     target, label = best.coords, best.label
                 elseif hasClaimed then
                     local p = cfg().depot.pile
-                    target, label = { x = p.x, y = p.y, z = p.z }, 'Parcel pile'
+                    target, label = { x = p.x, y = p.y, z = p.z }, T('route.pile')
                 end
             end
         end

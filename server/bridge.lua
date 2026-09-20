@@ -70,7 +70,7 @@ function PPBridge.getCharacterName(source)
         end
     end
 
-    return GetPlayerName(source) or 'Postal Prime Customer'
+    return GetPlayerName(source) or T('name.customer')
 end
 
 function PPBridge.getBalance(source, account)

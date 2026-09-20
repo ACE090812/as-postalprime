@@ -439,6 +439,7 @@
     .kiosk-retry { margin: 14px 18px 18px; height: 40px; border-radius: 10px; border: none; width: calc(100% - 36px); background: var(--navy); color: #fff; font-weight: 800; font-size: 13.5px; cursor: pointer; }
 </style>
 <link rel="stylesheet" href="courier.css">
+<script src="i18n.js"></script>
 </head>
 <body>
 <div id="app">
@@ -453,10 +454,10 @@
 <div id="lockerKeypad" class="hidden">
     <div class="kiosk">
         <div class="kiosk-head">
-            <button class="kiosk-close" id="kioskClose" aria-label="Cancel">&#10005;</button>
+            <button class="kiosk-close" id="kioskClose" aria-label="Cancel" data-i18n-aria-label="kiosk.cancelAria">&#10005;</button>
             <img src="logo.png" alt="Postal Prime">
             <h2 id="kioskLabel">Locker</h2>
-            <p>Enter your 6-digit pickup code</p>
+            <p data-i18n="screen.enterCode">Enter your 6-digit pickup code</p>
         </div>
         <div id="kioskEntry">
             <div class="kiosk-dots" id="kioskDots"></div>
@@ -470,13 +471,13 @@
                 <button class="kiosk-key" data-key="7">7</button>
                 <button class="kiosk-key" data-key="8">8</button>
                 <button class="kiosk-key" data-key="9">9</button>
-                <button class="kiosk-key wide" data-key="clear">Clear</button>
+                <button class="kiosk-key wide" data-key="clear" data-i18n="screen.clear">Clear</button>
                 <button class="kiosk-key" data-key="0">0</button>
                 <button class="kiosk-key wide" data-key="back">&#9003;</button>
             </div>
             <div class="kiosk-actions">
-                <button class="kiosk-btn cancel" id="kioskCancel">Cancel</button>
-                <button class="kiosk-btn submit" id="kioskSubmit" disabled>Open Locker</button>
+                <button class="kiosk-btn cancel" id="kioskCancel" data-i18n="screen.cancel">Cancel</button>
+                <button class="kiosk-btn submit" id="kioskSubmit" data-i18n="screen.open" disabled>Open Locker</button>
             </div>
         </div>
         <div id="kioskResultWrap" class="hidden">
@@ -484,7 +485,7 @@
                 <div class="ic" id="kioskResultIcon"></div>
                 <p id="kioskResultText"></p>
             </div>
-            <button class="kiosk-retry hidden" id="kioskRetry">Try Again</button>
+            <button class="kiosk-retry hidden" id="kioskRetry" data-i18n="screen.retry">Try Again</button>
         </div>
     </div>
 </div>
@@ -494,6 +495,7 @@
     var RESOURCE = 'as-postalprime';
     var state = null;
     var loaded = false;
+    var localeReady = false; // the language dictionary (ui/i18n.js) has arrived - see loadLocale at the bottom
 
     var tab = 'home';
     var activeCategory = 'all';
@@ -518,8 +520,10 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json; charset=UTF-8' },
             body: JSON.stringify(data || {}),
-        }).then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: 'No response' }; });
+        }).then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: t('err.noResponse') }; });
     }
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
     function fmt(n) {
         var parts = n.toFixed(2).split('.');
@@ -556,8 +560,8 @@
     }
     function stockNote(item) {
         if (typeof item.stock !== 'number') return '';
-        if (item.stock <= 0) return '<div class="stock-note out">Out of stock</div>';
-        if (item.stock <= 5) return '<div class="stock-note low">Only ' + item.stock + ' left</div>';
+        if (item.stock <= 0) return '<div class="stock-note out">' + esc(t('app.outOfStock')) + '</div>';
+        if (item.stock <= 5) return '<div class="stock-note low">' + esc(t('app.onlyLeft', item.stock)) + '</div>';
         return '';
     }
 
@@ -567,12 +571,12 @@
         return n;
     }
     function cartTotal() {
-        var t = 0;
+        var sum = 0;
         for (var k in cart) {
             var item = catalogItem(k);
-            if (item) t += item.price * cart[k];
+            if (item) sum += item.price * cart[k];
         }
-        return t;
+        return sum;
     }
     function pendingReadyCount() {
         if (!state) return 0;
@@ -631,8 +635,9 @@
         if (typeof l.doorsUsed !== 'number' || !l.doorsTotal) return null;
         var pct = l.doorsUsed / l.doorsTotal;
         var cls = pct === 0 ? 'quiet' : (pct < 0.5 ? 'moderate' : 'busy');
-        var txt = pct === 0 ? 'Quiet' : (pct < 0.5 ? 'Some activity' : 'Busy');
-        return { cls: cls, txt: txt + ' · ' + l.doorsUsed + '/' + l.doorsTotal + ' lockers in use' };
+        var txt = pct === 0 ? t('app.locker.quiet', l.doorsUsed, l.doorsTotal)
+            : (pct < 0.5 ? t('app.locker.some', l.doorsUsed, l.doorsTotal) : t('app.locker.busy', l.doorsUsed, l.doorsTotal));
+        return { cls: cls, txt: txt };
     }
 
     function showToast(msg) {
@@ -652,7 +657,7 @@
     function addToCart(id, qty) {
         cart[id] = (cart[id] || 0) + qty;
         saveCart();
-        showToast('Added to Cart');
+        showToast(t('app.addedToCart'));
     }
     function setQty(id, qty) {
         if (qty <= 0) { delete cart[id]; } else { cart[id] = qty; }
@@ -686,13 +691,13 @@
         post('as-postalprime/cancelOrder').then(function (res) {
             busy = false;
             if (!res || !res.ok) {
-                showToast((res && res.error) || 'Failed to cancel order');
+                showToast((res && res.error) || t('app.err.cancel'));
                 render();
                 return;
             }
             state.orders = res.orders;
             render();
-            showToast('Order cancelled and refunded');
+            showToast(t('app.toast.cancelled'));
         });
     }
 
@@ -711,7 +716,7 @@
         }).then(function (res) {
             busy = false;
             if (!res || !res.ok) {
-                showToast((res && res.error) || 'Checkout failed');
+                showToast((res && res.error) || t('app.err.checkout'));
                 render();
                 return;
             }
@@ -724,7 +729,7 @@
             giftName = '';
             tab = wasGift ? 'home' : 'orders';
             render();
-            showToast(wasGift ? ('Gift sent to ' + giftedTo + '!') : (isHome ? 'Order placed! Your courier will drop it at your door.' : 'Order placed! We\'ll text you when it\'s ready.'));
+            showToast(wasGift ? t('app.toast.giftSent', giftedTo) : (isHome ? t('app.toast.orderHome') : t('app.toast.orderLocker')));
         });
     }
 
@@ -742,8 +747,8 @@
         saveCart();
         tab = 'cart';
         render();
-        if (added === 0) showToast('None of those items are available anymore');
-        else showToast(skipped ? 'Added to cart (' + skipped + ' item no longer available)' : 'Added to cart');
+        if (added === 0) showToast(t('app.toast.reorderNone'));
+        else showToast(skipped ? t('app.toast.reorderSkipped', skipped) : t('app.toast.reorderAll'));
     }
 
     function fetchReviews(itemId) {
@@ -770,13 +775,13 @@
         }).then(function (res) {
             busy = false;
             if (!res || !res.ok) {
-                showToast((res && res.error) || 'Failed to submit review');
+                showToast((res && res.error) || t('app.err.review'));
                 render();
                 return;
             }
             var itemId = reviewDraft.itemId;
             reviewDraft = null;
-            showToast('Thanks for your review!');
+            showToast(t('app.toast.reviewThanks'));
             fetchReviews(itemId);
             refresh();
         });
@@ -786,7 +791,7 @@
         if (tab === 'checkout') {
             return '<div class="app-header"><div class="header-row1">' +
                 '<button class="icon-btn" id="backToCartFromHeader">←</button>' +
-                '<div class="brand" style="font-size:16px;">Checkout</div>' +
+                '<div class="brand" style="font-size:16px;">' + esc(t('app.checkout')) + '</div>' +
                 '</div></div>';
         }
         var html = '<div class="app-header">';
@@ -797,12 +802,12 @@
             '</div></div>';
         if (tab === 'home') {
             var nearest = state && state.lockers && state.lockers[0];
-            html += '<div class="deliver-row">📍 Nearest locker: <b>' + (nearest ? nearest.label : '—') + '</b></div>';
+            html += '<div class="deliver-row">' + esc(t('app.nearestLocker')) + ' <b>' + (nearest ? nearest.label : '—') + '</b></div>';
             html += '<div class="search-row"><div class="searchbar">' +
                 '<span class="mag">🔍</span>' +
-                '<input id="searchInput" placeholder="Search Postal Prime" value="' + searchQuery.replace(/"/g, '&quot;') + '">' +
+                '<input id="searchInput" placeholder="' + esc(t('app.search')) + '" value="' + searchQuery.replace(/"/g, '&quot;') + '">' +
                 '</div></div>';
-            var cats = ((state && state.categories) || []).concat([{ id: 'wishlist', label: '❤️ Saved' }]);
+            var cats = ((state && state.categories) || []).concat([{ id: 'wishlist', label: t('app.saved') }]);
             html += '<div class="chips">' + cats.map(function (c) {
                 return '<button class="chip ' + (activeCategory === c.id ? 'active' : '') + '" data-cat="' + c.id + '">' + c.label + '</button>';
             }).join('') + '</div>';
@@ -820,14 +825,14 @@
 
     function renderTabbar() {
         var tabs = [
-            { id: 'home', label: 'Home' },
-            { id: 'you', label: 'You' },
+            { id: 'home', label: t('app.tab.home') },
+            { id: 'you', label: t('app.tab.you') },
         ];
-        return tabs.map(function (t) {
-            var active = tab === t.id;
-            return '<button class="tab ' + (active ? 'active' : '') + '" data-tab="' + t.id + '">' +
-                (t.badge ? '<span class="badge">' + t.badge + '</span>' : '') +
-                '<span class="ic">' + TAB_ICONS[t.id] + '</span><span>' + t.label + '</span></button>';
+        return tabs.map(function (tb) {
+            var active = tab === tb.id;
+            return '<button class="tab ' + (active ? 'active' : '') + '" data-tab="' + tb.id + '">' +
+                (tb.badge ? '<span class="badge">' + tb.badge + '</span>' : '') +
+                '<span class="ic">' + TAB_ICONS[tb.id] + '</span><span>' + esc(tb.label) + '</span></button>';
         }).join('');
     }
 
@@ -843,12 +848,12 @@
 
         var html = '';
         if (isPlus()) {
-            html += '<div class="promo"><div><div class="t">You\'re a Plus member</div><div class="s">Free delivery + faster shipping</div></div><div class="em">✅</div></div>';
+            html += '<div class="promo"><div><div class="t">' + esc(t('app.promo.member')) + '</div><div class="s">' + esc(t('app.promo.memberSub')) + '</div></div><div class="em">✅</div></div>';
         } else {
-            html += '<div class="promo" data-tab="you" style="cursor:pointer;"><div><div class="t">Go Postal Prime Plus</div><div class="s">Free delivery &amp; faster shipping - from $' + (state.plusConfig ? state.plusConfig.price : '') + '</div></div><div class="em">🚀</div></div>';
+            html += '<div class="promo" data-tab="you" style="cursor:pointer;"><div><div class="t">' + esc(t('app.promo.go')) + '</div><div class="s">' + esc(t('app.promo.from', state.plusConfig ? state.plusConfig.price : '')) + '</div></div><div class="em">🚀</div></div>';
         }
-        var catLabel = 'Recommended for you';
-        if (activeCategory === 'wishlist') catLabel = 'Saved for later';
+        var catLabel = t('app.section.recommended');
+        if (activeCategory === 'wishlist') catLabel = t('app.section.saved');
         else if (activeCategory !== 'all') {
             var cat = state.categories.find(function (c) { return c.id === activeCategory; });
             if (cat) catLabel = cat.label;
@@ -857,8 +862,8 @@
         html += '<div class="grid">';
         if (filtered.length === 0) {
             html += activeCategory === 'wishlist'
-                ? '<div class="empty-state" style="grid-column:1/-1;margin-top:20px;"><div class="big">❤️</div>Nothing saved yet.<br>Tap the heart on any item to save it for later.</div>'
-                : '<div class="empty-state" style="grid-column:1/-1;margin-top:20px;"><div class="big">🔍</div>No results for "' + searchQuery + '".</div>';
+                ? '<div class="empty-state" style="grid-column:1/-1;margin-top:20px;"><div class="big">❤️</div>' + esc(t('app.empty.saved')) + '<br>' + esc(t('app.empty.savedHint')) + '</div>'
+                : '<div class="empty-state" style="grid-column:1/-1;margin-top:20px;"><div class="big">🔍</div>' + esc(t('app.empty.noResults', searchQuery)) + '</div>';
         }
         filtered.forEach(function (item) {
             var inCart = cart[item.id] > 0;
@@ -871,10 +876,10 @@
                 '<div class="label">' + item.label + '</div>' +
                 '<div class="stars">' + stars(item.rating) + '<span>' + fmtReviewCount(item.reviews) + '</span></div>' +
                 '<div class="price-row"><span class="sym">$</span><span class="amt">' + p.whole + '</span><span class="sym">' + p.cents + '</span></div>' +
-                '<div class="prime-badge">' + (isPlus() ? '✓ Prime Plus FREE delivery' : '🚚 $' + deliveryFee().toFixed(2) + ' delivery (free with Plus)') + '</div>' +
+                '<div class="prime-badge">' + esc(isPlus() ? t('app.card.primeFree') : t('app.card.delivery', deliveryFee().toFixed(2))) + '</div>' +
                 stockNote(item) +
                 '<button class="add-btn ' + (inCart ? 'in-cart' : '') + '" data-quickadd="' + item.id + '" ' + (oos ? 'disabled' : '') + '>' +
-                (oos ? 'Out of stock' : (inCart ? cart[item.id] + ' in cart' : 'Add to Cart')) + '</button>' +
+                esc(oos ? t('app.outOfStock') : (inCart ? t('app.inCart', cart[item.id]) : t('app.addToCart'))) + '</button>' +
                 '</div>';
         });
         html += '</div>';
@@ -882,10 +887,10 @@
     }
 
     function renderCart() {
-        var html = '<div class="section-title" style="margin-top:14px;">Cart</div>';
+        var html = '<div class="section-title" style="margin-top:14px;">' + esc(t('app.cart')) + '</div>';
         var ids = Object.keys(cart);
         if (ids.length === 0) {
-            html += '<div class="empty-state"><div class="big">🛒</div>Your Postal Prime cart is empty.<br>Head to Home to add something.</div>';
+            html += '<div class="empty-state"><div class="big">🛒</div>' + esc(t('app.empty.cart')) + '<br>' + esc(t('app.empty.cartHint')) + '</div>';
         } else {
             html += '<div class="list-pad">';
             ids.forEach(function (id) {
@@ -894,7 +899,7 @@
                 var p = fmt(item.price);
                 html += '<div class="cart-item">' +
                     '<div class="icon">' + item.icon + '</div>' +
-                    '<div class="info"><div class="name">' + item.label + '</div><div class="unit">$' + p.whole + '.' + p.cents + ' each · <span class="prime">Prime</span></div></div>' +
+                    '<div class="info"><div class="name">' + item.label + '</div><div class="unit">$' + p.whole + '.' + p.cents + ' ' + esc(t('app.each')) + ' · <span class="prime">' + esc(t('app.prime')) + '</span></div></div>' +
                     '<div class="qty-stepper">' +
                     '<button data-qty="' + id + '" data-delta="-1">−</button>' +
                     '<span>' + cart[id] + '</span>' +
@@ -903,13 +908,13 @@
             });
             html += '</div>';
             html += '<div class="summary-card">' +
-                '<div class="summary-row"><span>Subtotal (' + cartCount() + ' item' + (cartCount() === 1 ? '' : 's') + ')</span><span>$' + cartTotal().toFixed(2) + '</span></div>' +
-                '<div class="summary-row"><span>Delivery</span>' + (isPlus() ?
-                    '<span style="color:var(--green);font-weight:700;">FREE with Plus</span>' :
+                '<div class="summary-row"><span>' + esc(cartCount() === 1 ? t('app.subtotal.one', cartCount()) : t('app.subtotal.other', cartCount())) + '</span><span>$' + cartTotal().toFixed(2) + '</span></div>' +
+                '<div class="summary-row"><span>' + esc(t('app.delivery')) + '</span>' + (isPlus() ?
+                    '<span style="color:var(--green);font-weight:700;">' + esc(t('app.freeWithPlus')) + '</span>' :
                     '<span>$' + deliveryFee().toFixed(2) + '</span>') + '</div>' +
-                '<div class="summary-row total"><span>Order Total</span><span>$' + cartGrandTotal().toFixed(2) + '</span></div>' +
-                (isPlus() ? '' : '<div class="plus-nudge" data-tab="you">Add Postal Prime Plus for free delivery &amp; faster shipping ›</div>') +
-                '<button class="primary-btn" id="goCheckout">Proceed to Checkout</button>' +
+                '<div class="summary-row total"><span>' + esc(t('app.orderTotal')) + '</span><span>$' + cartGrandTotal().toFixed(2) + '</span></div>' +
+                (isPlus() ? '' : '<div class="plus-nudge" data-tab="you">' + esc(t('app.plusNudge')) + '</div>') +
+                '<button class="primary-btn" id="goCheckout">' + esc(t('app.proceed')) + '</button>' +
                 '</div>';
         }
         return html;
@@ -918,45 +923,45 @@
     function renderCheckout() {
         var html = '<div style="padding:14px 12px 0;">';
         // Parcels sent by other resources (passport etc.) never stop you ordering.
-        var hasActive = state && state.orders.some(function (o) { return !o.collected && !o.expired && !o.parcel; });
+        var hasActive = state && state.orders.some(function (o) { return !o.collected && !o.expired && !o.cancelled && !o.parcel; });
         if (hasActive) {
-            html += '<div class="empty-state" style="margin-top:10px;"><div class="big">📦</div>You already have an order on the way.<br>Collect it (or wait for it to expire) before ordering again.</div></div>';
+            html += '<div class="empty-state" style="margin-top:10px;"><div class="big">📦</div>' + esc(t('app.empty.hasActive')) + '<br>' + esc(t('app.empty.hasActiveHint')) + '</div></div>';
             return html;
         }
         var homeOn = homeEnabled();
         var homeMode = homeOn && deliveryMode === 'home';
         if (homeOn) {
             html += '<div class="seg">' +
-                '<button class="seg-btn ' + (!homeMode ? 'active' : '') + '" data-mode="locker">📦 Locker pickup</button>' +
-                '<button class="seg-btn ' + (homeMode ? 'active' : '') + '" data-mode="home">🏠 Home delivery</button>' +
+                '<button class="seg-btn ' + (!homeMode ? 'active' : '') + '" data-mode="locker">' + esc(t('app.mode.locker')) + '</button>' +
+                '<button class="seg-btn ' + (homeMode ? 'active' : '') + '" data-mode="home">' + esc(t('app.mode.home')) + '</button>' +
                 '</div>';
         }
         if (homeMode) {
-            html += '<div class="section-title" style="margin:0 0 8px;">Deliver to</div>';
+            html += '<div class="section-title" style="margin:0 0 8px;">' + esc(t('app.deliverTo')) + '</div>';
             if (homeProps === null) {
-                html += '<div class="home-note">Loading your properties…</div>';
+                html += '<div class="home-note">' + esc(t('app.home.loading')) + '</div>';
             } else if (homeProps.length === 0) {
-                html += '<div class="home-note">You don\'t own, rent or have keys to a property yet - pick a locker instead.</div>';
+                html += '<div class="home-note">' + esc(t('app.home.none')) + '</div>';
             } else {
                 html += '<select class="prop-select" id="propSelect">' +
-                    '<option value="">Select a property…</option>' +
+                    '<option value="">' + esc(t('app.home.select')) + '</option>' +
                     homeProps.map(function (p) {
                         return '<option value="' + p.key + '"' + (homePropKey === p.key ? ' selected' : '') + '>' +
                             String(p.label).replace(/</g, '&lt;') + '</option>';
                     }).join('') + '</select>';
-                html += '<div class="home-note">A Postal Prime courier van will bring the parcel to the front door of this property and leave it there until it\'s picked up.</div>';
+                html += '<div class="home-note">' + esc(t('app.home.note')) + '</div>';
             }
             html += '</div>';
         } else {
-        html += '<div class="section-title" style="margin:0 0 8px;">Choose a pickup locker</div>';
+        html += '<div class="section-title" style="margin:0 0 8px;">' + esc(t('app.chooseLocker')) + '</div>';
         var lockers = (state && state.lockers) || [];
         lockers.forEach(function (l) {
             var sel = checkoutLocker === l.id;
-            var distTxt = (typeof l.distanceKm === 'number') ? l.distanceKm.toFixed(1) + ' km away' : '';
+            var distTxt = (typeof l.distanceKm === 'number') ? t('app.kmAway', l.distanceKm.toFixed(1)) : '';
             var cap = lockerCapInfo(l);
             html += '<button class="locker-opt ' + (sel ? 'selected' : '') + '" data-locker="' + l.id + '">' +
                 '<div><div class="name">📦 ' + l.label + '</div><div class="dist">' + distTxt + '</div>' +
-                (cap ? '<div class="cap ' + cap.cls + '">' + cap.txt + '</div>' : '') + '</div>' +
+                (cap ? '<div class="cap ' + cap.cls + '">' + esc(cap.txt) + '</div>' : '') + '</div>' +
                 '<div class="radio"></div></button>';
         });
         html += '</div>';
@@ -964,89 +969,89 @@
 
         if (!homeMode) {
         html += '<div class="gift-toggle-row">' +
-            '<div><div class="label">🎁 Send as a gift</div><div class="sub">Goes to their locker, not yours</div></div>' +
+            '<div><div class="label">' + esc(t('app.gift.title')) + '</div><div class="sub">' + esc(t('app.gift.sub')) + '</div></div>' +
             '<label class="switch"><input type="checkbox" id="giftToggle" ' + (giftMode ? 'checked' : '') + '>' +
             '<span class="track"></span></label></div>';
         if (giftMode) {
-            html += '<input type="text" class="gift-name-input" id="giftNameInput" placeholder="Recipient\'s in-game name" value="' + giftName.replace(/"/g, '&quot;') + '">';
+            html += '<input type="text" class="gift-name-input" id="giftNameInput" placeholder="' + esc(t('app.gift.placeholder')) + '" value="' + giftName.replace(/"/g, '&quot;') + '">';
         }
         }
 
         var canPlace = !busy && (homeMode ? !!homePropKey : (checkoutLocker && (!giftMode || giftName.trim() !== '')));
         html += '<div class="summary-card">' +
-            '<div class="summary-row"><span>Items (' + cartCount() + ')</span><span>$' + cartTotal().toFixed(2) + '</span></div>' +
-            '<div class="summary-row"><span>' + (homeMode ? 'Home delivery' : 'Delivery') + '</span>' + (isPlus() ?
-                '<span style="color:var(--green);font-weight:700;">FREE with Plus</span>' :
+            '<div class="summary-row"><span>' + esc(t('app.items', cartCount())) + '</span><span>$' + cartTotal().toFixed(2) + '</span></div>' +
+            '<div class="summary-row"><span>' + esc(homeMode ? t('app.homeDelivery') : t('app.delivery')) + '</span>' + (isPlus() ?
+                '<span style="color:var(--green);font-weight:700;">' + esc(t('app.freeWithPlus')) + '</span>' :
                 '<span>$' + (homeMode ? homeFee() : deliveryFee()).toFixed(2) + '</span>') + '</div>' +
-            '<div class="summary-row total"><span>Order Total</span><span>$' + checkoutTotal().toFixed(2) + '</span></div>' +
-            (giftMode && !homeMode ? '<div class="stock-note low" style="margin:4px 12px 0;">You\'re charged - delivery speed/fee follows the recipient\'s own Plus status, so their final total may differ slightly.</div>' : '') +
-            (isPlus() || giftMode ? '' : '<div class="plus-nudge" data-tab="you">Add Postal Prime Plus for free delivery &amp; faster shipping ›</div>') +
-            '<button class="primary-btn" id="placeOrderBtn" ' + (canPlace ? '' : 'disabled') + '>' + (busy ? 'Placing order…' : (homeMode ? 'Place home delivery order' : (giftMode ? 'Send gift order' : 'Place your order'))) + '</button>' +
-            '<button class="ghost-btn" id="backToCart">Back to Cart</button>' +
+            '<div class="summary-row total"><span>' + esc(t('app.orderTotal')) + '</span><span>$' + checkoutTotal().toFixed(2) + '</span></div>' +
+            (giftMode && !homeMode ? '<div class="stock-note low" style="margin:4px 12px 0;">' + esc(t('app.gift.note')) + '</div>' : '') +
+            (isPlus() || giftMode ? '' : '<div class="plus-nudge" data-tab="you">' + esc(t('app.plusNudge')) + '</div>') +
+            '<button class="primary-btn" id="placeOrderBtn" ' + (canPlace ? '' : 'disabled') + '>' + esc(busy ? t('app.placing') : (homeMode ? t('app.place.home') : (giftMode ? t('app.place.gift') : t('app.place.locker')))) + '</button>' +
+            '<button class="ghost-btn" id="backToCart">' + esc(t('app.backToCart')) + '</button>' +
             '</div>';
         return html;
     }
 
     function renderOrders() {
-        var html = '<div class="section-title" style="margin-top:14px;">Your Orders</div>';
+        var html = '<div class="section-title" style="margin-top:14px;">' + esc(t('app.orders')) + '</div>';
         var orders = (state && state.orders) || [];
         if (orders.length === 0) {
-            html += '<div class="empty-state"><div class="big">📦</div>No orders yet.</div>';
+            html += '<div class="empty-state"><div class="big">📦</div>' + esc(t('app.empty.orders')) + '</div>';
         } else {
             orders.forEach(function (o) {
-                var itemsLabel = o.items.map(function (it) { return (it.qty > 1 ? it.qty + 'x ' : '') + it.label; }).join(', ');
+                var itemsLabel = o.items.map(function (it) { return it.qty > 1 ? t('app.itemQty', it.qty, it.label) : it.label; }).join(', ');
                 var elapsed = Date.now() - o.placedAt;
                 var span = Math.max(1, o.readyAt - o.placedAt);
                 var pct = Math.min(100, Math.round((elapsed / span) * 100));
                 var statusClass = o.cancelled ? 'cancelled' : (o.expired ? 'expired' : (o.collected ? 'collected' : (o.ready ? 'ready' : 'preparing')));
-                var courierLabels = { board: 'Waiting for a courier', claimed: 'Courier collecting', loaded: 'Out for delivery' };
-                var statusLabel = o.cancelled ? 'Cancelled & refunded' : (o.expired ? 'Expired & refunded' : (o.collected ? 'Collected' : (o.ready ? (o.delivery === 'home' ? 'Delivered' : 'Ready for pickup') : (o.courier ? (courierLabels[o.courier] || 'Preparing') : 'Preparing'))));
+                var courierLabels = { board: t('app.status.waitingCourier'), claimed: t('app.status.courierCollecting'), loaded: t('app.status.outForDelivery') };
+                var statusLabel = o.cancelled ? t('app.status.cancelled') : (o.expired ? t('app.status.expired') : (o.collected ? t('app.status.collected') : (o.ready ? (o.delivery === 'home' ? t('app.status.delivered') : t('app.status.ready')) : (o.courier ? (courierLabels[o.courier] || t('app.status.preparing')) : t('app.status.preparing')))));
                 var html2 = '<div class="order-card">' +
                     '<div class="row1"><div><div class="items">' + itemsLabel + '</div>' +
                     '<div class="locker">' + (o.delivery === 'home' ? '🏠 ' : '📦 ') + o.lockerLabel + ' · $' + o.total.toFixed(2) + '</div></div>' +
-                    '<span class="status-pill ' + statusClass + '">' + statusLabel + '</span></div>';
+                    '<span class="status-pill ' + statusClass + '">' + esc(statusLabel) + '</span></div>';
                 if (o.giftedBy) {
-                    html2 += '<div class="gifted-note">🎁 Gift from ' + o.giftedBy + '</div>';
+                    html2 += '<div class="gifted-note">' + esc(t('app.giftFrom', o.giftedBy)) + '</div>';
                 }
                 if (!o.ready && !o.collected && !o.expired && !o.cancelled) {
                     if (o.courier) {
-                        var courierNote = o.courier === 'board' ? 'Your order is ready and waiting for a Postal Prime courier to pick it up.'
-                            : (o.courier === 'claimed' ? 'A courier has taken your order and is loading their vehicle.' : (o.delivery === 'home' ? 'Your courier is on the way to your door.' : 'Your courier is on the way to the locker.'));
-                        html2 += '<div class="code-box"><div class="hint" style="margin-top:0;">' + courierNote + '</div></div>';
+                        var courierNote = o.courier === 'board' ? t('app.courier.board')
+                            : (o.courier === 'claimed' ? t('app.courier.claimed') : (o.delivery === 'home' ? t('app.courier.home') : t('app.courier.locker')));
+                        html2 += '<div class="code-box"><div class="hint" style="margin-top:0;">' + esc(courierNote) + '</div></div>';
                     } else {
                         html2 += '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
                     }
                     if (!o.parcel && (!o.courier || o.courier === 'board')) {
-                        html2 += '<button class="cancel-btn" data-cancel="' + o.id + '" ' + (busy ? 'disabled' : '') + '>Cancel &amp; refund</button>';
+                        html2 += '<button class="cancel-btn" data-cancel="' + o.id + '" ' + (busy ? 'disabled' : '') + '>' + esc(t('app.cancelRefund')) + '</button>';
                     }
                 }
                 if (o.ready && !o.collected && !o.expired && o.code) {
-                    html2 += '<div class="code-box"><div><div class="label">Pickup Code</div><div class="code">' + o.code + '</div></div>' +
-                        '<div class="hint">' + (o.deliveredBy ? 'Delivered by ' + o.deliveredBy + '. ' : '') + 'Head to ' + o.lockerLabel + ', use the target option on the locker, and enter this code to open it.</div></div>';
+                    html2 += '<div class="code-box"><div><div class="label">' + esc(t('app.pickupCode')) + '</div><div class="code">' + o.code + '</div></div>' +
+                        '<div class="hint">' + (o.deliveredBy ? esc(t('app.deliveredBy', o.deliveredBy)) + ' ' : '') + esc(t('app.headTo', o.lockerLabel)) + '</div></div>';
                 }
                 if (o.delivery === 'home' && o.ready && !o.collected && !o.expired) {
-                    html2 += '<div class="code-box"><div class="hint" style="margin-top:0;">' + (o.deliveredBy ? 'Delivered by ' + o.deliveredBy + '. ' : '') + 'Your parcel is at the front door. Walk up to the box and use the target option to take it - anyone nearby can pick it up, so don\'t leave it there long.</div></div>';
+                    html2 += '<div class="code-box"><div class="hint" style="margin-top:0;">' + (o.deliveredBy ? esc(t('app.deliveredBy', o.deliveredBy)) + ' ' : '') + esc(t('app.frontDoor')) + '</div></div>';
                 }
                 if (o.collected && o.takenBy) {
-                    html2 += '<div class="expired-note">Picked up by ' + o.takenBy + '.</div>';
+                    html2 += '<div class="expired-note">' + esc(t('app.pickedUpBy', o.takenBy)) + '</div>';
                 }
                 if (o.expired) {
-                    html2 += '<div class="expired-note">This order went uncollected too long and was refunded in full.</div>';
+                    html2 += '<div class="expired-note">' + esc(t('app.note.expired')) + '</div>';
                 }
                 if (o.cancelled) {
-                    html2 += '<div class="expired-note">You cancelled this order and were refunded in full.</div>';
+                    html2 += '<div class="expired-note">' + esc(t('app.note.cancelled')) + '</div>';
                 }
                 // Parcels sent by other resources (passport etc.) aren't purchases: no reviews, no reorder.
                 if (o.collected && !o.takenBy && !o.parcel) {
                     html2 += '<div class="review-prompts">';
                     o.items.forEach(function (it) {
                         if (it.reviewed) {
-                            html2 += '<div class="review-done">✓ You reviewed ' + it.label + '</div>';
+                            html2 += '<div class="review-done">' + esc(t('app.youReviewed', it.label)) + '</div>';
                         } else {
-                            html2 += '<button class="rate-btn" data-writereview="' + it.id + '">⭐ Rate &amp; review ' + it.label + '</button>';
+                            html2 += '<button class="rate-btn" data-writereview="' + it.id + '">' + esc(t('app.rateReview', it.label)) + '</button>';
                         }
                     });
-                    html2 += '<button class="rate-btn reorder-btn" data-reorder="' + o.id + '">🔁 Reorder</button>';
+                    html2 += '<button class="rate-btn reorder-btn" data-reorder="' + o.id + '">' + esc(t('app.reorder')) + '</button>';
                     html2 += '</div>';
                 }
                 html2 += '</div>';
@@ -1061,15 +1066,15 @@
         if (isPlus()) {
             var expiresTxt = state.plus.expiresAt ? fmtDate(state.plus.expiresAt) : '';
             return '<div class="plus-card active">' +
-                '<div class="plus-title">✅ Postal Prime Plus</div>' +
-                '<div class="plus-sub">Active until ' + expiresTxt + ' - free delivery &amp; faster shipping</div>' +
-                '<button class="plus-btn" id="renewPlus" ' + (busy ? 'disabled' : '') + '>' + (busy ? 'Processing…' : 'Renew +' + cfg.durationDays + ' days · $' + cfg.price) + '</button>' +
+                '<div class="plus-title">' + esc(t('app.plus.titleActive')) + '</div>' +
+                '<div class="plus-sub">' + esc(t('app.plus.active', expiresTxt)) + '</div>' +
+                '<button class="plus-btn" id="renewPlus" ' + (busy ? 'disabled' : '') + '>' + esc(busy ? t('app.processing') : t('app.plus.renew', cfg.durationDays, cfg.price)) + '</button>' +
                 '</div>';
         }
         return '<div class="plus-card">' +
-            '<div class="plus-title">🚀 Postal Prime Plus</div>' +
-            '<div class="plus-sub">Free delivery on every order (normally $' + cfg.deliveryFee.toFixed(2) + ') and faster shipping, for ' + cfg.durationDays + ' days.</div>' +
-            '<button class="plus-btn" id="subscribePlus" ' + (busy ? 'disabled' : '') + '>' + (busy ? 'Processing…' : 'Subscribe · $' + cfg.price) + '</button>' +
+            '<div class="plus-title">' + esc(t('app.plus.title')) + '</div>' +
+            '<div class="plus-sub">' + esc(t('app.plus.sub', cfg.deliveryFee.toFixed(2), cfg.durationDays)) + '</div>' +
+            '<button class="plus-btn" id="subscribePlus" ' + (busy ? 'disabled' : '') + '>' + esc(busy ? t('app.processing') : t('app.plus.subscribe', cfg.price)) + '</button>' +
             '</div>';
     }
 
@@ -1079,13 +1084,13 @@
         post('as-postalprime/subscribePlus').then(function (res) {
             busy = false;
             if (!res || !res.ok) {
-                showToast((res && res.error) || 'Failed to subscribe');
+                showToast((res && res.error) || t('app.err.subscribe'));
                 render();
                 return;
             }
             state.plus = res.plus;
             render();
-            showToast('Welcome to Postal Prime Plus!');
+            showToast(t('app.toast.plusWelcome'));
         });
     }
 
@@ -1099,23 +1104,23 @@
         var reviewed = 0;
         collected.forEach(function (o) { o.items.forEach(function (it) { if (it.reviewed) reviewed++; }); });
 
-        var name = (state && state.playerName) || 'Postal Prime Customer';
+        var name = (state && state.playerName) || t('name.customer');
         var initial = name.charAt(0).toUpperCase();
         var html = '<div class="you-header">' +
             '<div class="you-avatar">' + initial + '</div>' +
             '<div><div class="name">' + name + '</div>' +
-            '<div class="sub">' + (isPlus() ? 'Postal Prime Plus member' : 'Postal Prime member') + '</div></div></div>';
+            '<div class="sub">' + esc(isPlus() ? t('app.you.memberPlus') : t('app.you.member')) + '</div></div></div>';
 
         html += renderPlusCard();
 
         html += '<div class="you-stats">' +
-            '<div class="you-stat"><div class="n">' + orders.length + '</div><div class="l">Orders placed</div></div>' +
-            '<div class="you-stat"><div class="n">' + itemsCollected + '</div><div class="l">Items collected</div></div>' +
-            '<div class="you-stat"><div class="n">$' + totalSpent.toFixed(0) + '</div><div class="l">Total spent</div></div>' +
+            '<div class="you-stat"><div class="n">' + orders.length + '</div><div class="l">' + esc(t('app.you.ordersPlaced')) + '</div></div>' +
+            '<div class="you-stat"><div class="n">' + itemsCollected + '</div><div class="l">' + esc(t('app.you.itemsCollected')) + '</div></div>' +
+            '<div class="you-stat"><div class="n">$' + totalSpent.toFixed(0) + '</div><div class="l">' + esc(t('app.you.totalSpent')) + '</div></div>' +
             '</div>';
         html += '<div class="you-list">' +
-            '<button class="you-row" data-tab="orders"><span>📦 Your Orders' + (pendingReadyCount() ? ' <span class="you-row-badge">' + pendingReadyCount() + ' ready</span>' : '') + '</span><span class="chev">›</span></button>' +
-            '<div class="you-row" style="cursor:default;"><span>⭐ Reviews written</span><span>' + reviewed + '</span></div>' +
+            '<button class="you-row" data-tab="orders"><span>' + esc(t('app.you.orders')) + (pendingReadyCount() ? ' <span class="you-row-badge">' + esc(t('app.you.ready', pendingReadyCount())) + '</span>' : '') + '</span><span class="chev">›</span></button>' +
+            '<div class="you-row" style="cursor:default;"><span>' + esc(t('app.you.reviews')) + '</span><span>' + reviewed + '</span></div>' +
             '</div>';
         return html;
     }
@@ -1134,9 +1139,9 @@
             '<button class="heart-btn ' + (savedDetail ? 'saved' : '') + '" data-wishlist="' + item.id + '">' + (savedDetail ? '❤️' : '🤍') + '</button>' +
             '<div class="icon-big">' + item.icon + '</div>' +
             '<div class="name">' + item.label + '</div>' +
-            '<div class="stars">' + stars(item.rating) + '<span>' + fmtReviewCount(item.reviews) + ' ratings</span></div>' +
+            '<div class="stars">' + stars(item.rating) + '<span>' + esc(t('app.ratings', fmtReviewCount(item.reviews))) + '</span></div>' +
             '<div class="price"><span class="sym">$</span>' + fmt(item.price).whole + '<span class="sym">' + fmt(item.price).cents + '</span></div>' +
-            '<div class="prime-line">' + (isPlus() ? '✓ Prime Plus FREE delivery to any locker' : '🚚 $' + deliveryFee().toFixed(2) + ' delivery to any locker (free with Plus)') + '</div>' +
+            '<div class="prime-line">' + esc(isPlus() ? t('app.sheet.primeFree') : t('app.sheet.delivery', deliveryFee().toFixed(2))) + '</div>' +
             stockNote(item) +
             (oos ? '' :
                 '<div class="qty-row"><div class="qty-stepper">' +
@@ -1144,42 +1149,42 @@
                 '<button data-detailqty="1" ' + (detailItem.qty >= maxQty ? 'disabled' : '') + '>+</button>' +
                 '</div></div>') +
             '<button class="primary-btn" id="confirmAdd" ' + (oos ? 'disabled' : '') + '>' +
-            (oos ? 'Out of stock' : ('Add ' + detailItem.qty + ' to Cart · $' + p.whole + '.' + p.cents)) + '</button>' +
+            esc(oos ? t('app.outOfStock') : t('app.sheet.add', detailItem.qty, p.whole, p.cents)) + '</button>' +
             renderReviews(item) +
             '</div></div>';
     }
 
     function renderReviews(item) {
         var cached = reviewsCache[item.id];
-        var html = '<div class="reviews-section">' + '<div class="rev-heading">Customer reviews</div>';
+        var html = '<div class="reviews-section">' + '<div class="rev-heading">' + esc(t('app.reviews.title')) + '</div>';
         if (!cached || cached.loading) {
-            html += '<div class="rev-loading">Loading reviews…</div></div>';
+            html += '<div class="rev-loading">' + esc(t('app.reviews.loading')) + '</div></div>';
             return html;
         }
         if (cached.error) {
-            html += '<div class="rev-loading">Couldn\'t load reviews.</div></div>';
+            html += '<div class="rev-loading">' + esc(t('app.reviews.error')) + '</div></div>';
             return html;
         }
-        html += '<div class="rev-summary"><span class="stars">' + stars(cached.rating) + '</span><span>' + cached.rating.toFixed(1) + ' out of 5 · ' + fmtReviewCount(cached.reviewCount) + ' ratings</span></div>';
+        html += '<div class="rev-summary"><span class="stars">' + stars(cached.rating) + '</span><span>' + esc(t('app.reviews.summary', cached.rating.toFixed(1), fmtReviewCount(cached.reviewCount))) + '</span></div>';
         if (cached.mine) {
-            html += '<div class="my-review"><span class="rev-badge">Your review</span>' +
+            html += '<div class="my-review"><span class="rev-badge">' + esc(t('app.reviews.mine')) + '</span>' +
                 '<div class="rev-stars">' + stars(cached.mine.rating) + '</div>' +
                 '<div class="rev-title">' + cached.mine.title + '</div>' +
                 '<div class="rev-body">' + cached.mine.body + '</div>' +
-                '<div class="rev-meta">Verified Purchase · Delivered to a Postal Prime locker</div></div>';
+                '<div class="rev-meta">' + esc(t('app.reviews.verifiedMine')) + '</div></div>';
         }
         cached.reviews.forEach(function (r) {
             html += '<div class="review-item">' +
                 '<div class="rev-top"><div class="rev-avatar">' + (r.name || '?').charAt(0).toUpperCase() + '</div>' +
-                '<div><div class="rev-name">' + r.name + '<span class="rev-verified">✓ Verified Purchase</span></div></div></div>' +
+                '<div><div class="rev-name">' + r.name + '<span class="rev-verified">' + esc(t('app.reviews.verified')) + '</span></div></div></div>' +
                 '<div class="rev-stars">' + stars(r.rating) + '</div>' +
                 '<div class="rev-title">' + r.title + '</div>' +
                 '<div class="rev-body">' + r.body + '</div>' +
-                '<div class="rev-meta">Reviewed ' + fmtDate(r.createdAt) + ' · Delivered to a Postal Prime locker</div>' +
+                '<div class="rev-meta">' + esc(t('app.reviews.meta', fmtDate(r.createdAt))) + '</div>' +
                 '</div>';
         });
         if (!cached.mine && cached.reviews.length === 0) {
-            html += '<div class="rev-loading">No reviews yet - be the first once you\'ve collected it.</div>';
+            html += '<div class="rev-loading">' + esc(t('app.reviews.none')) + '</div>';
         }
         html += '</div>';
         return html;
@@ -1196,20 +1201,20 @@
         return '<div class="sheet-backdrop" id="reviewBackdrop">' +
             '<div class="sheet review-composer">' +
             '<button class="close-x" id="closeReview">✕</button>' +
-            '<div class="rc-title">Rate &amp; review</div>' +
+            '<div class="rc-title">' + esc(t('app.rc.title')) + '</div>' +
             '<div class="rc-item">' + item.icon + ' ' + item.label + '</div>' +
             '<div class="rc-stars">' + starsHtml + '</div>' +
-            '<input type="text" id="rcTitleInput" placeholder="Give your review a title" value="' + (reviewDraft.title || '').replace(/"/g, '&quot;') + '">' +
-            '<textarea id="rcBodyInput" placeholder="What did you like or dislike?">' + (reviewDraft.body || '') + '</textarea>' +
-            '<button class="primary-btn" id="submitReview" ' + (busy ? 'disabled' : '') + '>' + (busy ? 'Submitting…' : 'Submit review') + '</button>' +
+            '<input type="text" id="rcTitleInput" placeholder="' + esc(t('app.rc.titlePlaceholder')) + '" value="' + (reviewDraft.title || '').replace(/"/g, '&quot;') + '">' +
+            '<textarea id="rcBodyInput" placeholder="' + esc(t('app.rc.bodyPlaceholder')) + '">' + (reviewDraft.body || '') + '</textarea>' +
+            '<button class="primary-btn" id="submitReview" ' + (busy ? 'disabled' : '') + '>' + esc(busy ? t('app.rc.submitting') : t('app.rc.submit')) + '</button>' +
             '</div></div>';
     }
 
     function render() {
         var el = document.getElementById('screen');
-        if (!loaded) {
+        if (!loaded || !localeReady) {
             document.getElementById('header').innerHTML = '';
-            el.innerHTML = '<div class="loading">Loading Postal Prime…</div>';
+            el.innerHTML = '<div class="loading" data-i18n="app.loading">Loading Postal Prime…</div>';
             document.getElementById('tabbar').innerHTML = '';
             return;
         }
@@ -1425,7 +1430,7 @@
     function showLockerKeypad(label) {
         kioskOpen = true;
         kioskCode = '';
-        kioskLabelEl.textContent = label || 'Locker';
+        kioskLabelEl.textContent = label || t('screen.lockerDefault');
         kioskEntryEl.classList.remove('hidden');
         kioskResultWrapEl.classList.add('hidden');
         kioskRetryEl.classList.add('hidden');
@@ -1456,13 +1461,13 @@
             if (res && res.ok) {
                 kioskResultEl.className = 'kiosk-result ok';
                 kioskResultIconEl.innerHTML = '&#10003;';
-                kioskResultTextEl.textContent = 'Locker door opened - grab your parcel!';
+                kioskResultTextEl.textContent = t('screen.opened');
                 kioskRetryEl.classList.add('hidden');
                 setTimeout(closeKiosk, 1600);
             } else {
                 kioskResultEl.className = 'kiosk-result err';
                 kioskResultIconEl.innerHTML = '&#10005;';
-                kioskResultTextEl.textContent = (res && res.error) || 'Failed to open locker';
+                kioskResultTextEl.textContent = (res && res.error) || t('screen.failed');
                 kioskRetryEl.classList.remove('hidden');
             }
         });
@@ -1515,6 +1520,10 @@
     document.addEventListener('visibilitychange', function () {
         if (shown && document.visibilityState === 'visible') refresh();
     });
+
+    // Language dictionary from client/main.lua (Config.locale). The page renders once it has arrived; static
+    // markup keeps its English text until then (data-i18n attributes are swapped by applyI18n).
+    loadLocale(function () { localeReady = true; render(); });
 })();
 </script>
 <script src="courier.js"></script>

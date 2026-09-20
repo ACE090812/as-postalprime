@@ -30,7 +30,7 @@
         position: absolute; inset: 0; background: #0b0d12; color: #fff;
         display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
     }
-    #idle img { width: 70%; margin-bottom: calc(var(--u) * 20); }
+    #idle img { width: 64%; margin-bottom: calc(var(--u) * 20); }
     #idle .sub { font-size: calc(var(--u) * 34); font-weight: 700; }
     #idle .touch { margin-top: calc(var(--u) * 110); font-size: calc(var(--u) * 24); font-weight: 700; letter-spacing: 0.04em; }
     #idle .hand { font-size: calc(var(--u) * 120); color: var(--navy); margin-top: calc(var(--u) * 70); }
@@ -60,8 +60,8 @@
     }
     .btn.key { font-size: calc(var(--u) * 46); font-weight: 700; }
     .btn.keysmall { font-size: calc(var(--u) * 28); color: var(--dim); font-weight: 700; }
-    .btn.cancel { font-size: calc(var(--u) * 32); }
-    .btn.submit { background: var(--red); color: #fff; font-size: calc(var(--u) * 32); }
+    .btn.cancel { font-size: calc(var(--u) * 28); }
+    .btn.submit { background: var(--red); color: #fff; font-size: calc(var(--u) * 28); }
     .btn.close { background: rgba(255,255,255,0.22); color: #fff; font-size: calc(var(--u) * 30); border-radius: 999px; }
     .btn.off { opacity: 0.4; }
     .btn.hover:not(.off) { background: #dfe6f5; box-shadow: 0 0 0 calc(var(--u) * 4) var(--navy) inset; }
@@ -89,9 +89,9 @@
 <div id="screen">
     <div id="idle">
         <img src="logo.png" alt="Postal Prime">
-        <div class="sub">Collect your order.</div>
+        <div class="sub" id="idleSub">Collect your order.</div>
         <div class="hand">&#9757;</div>
-        <div class="touch">TOUCH SCREEN TO START</div>
+        <div class="touch" id="idleTouch">TOUCH SCREEN TO START</div>
     </div>
     <div id="ui"></div>
     <svg id="cursor" viewBox="0 0 24 24"><path d="M4 2 L4 19 L8.6 14.8 L11.6 21.5 L14.2 20.3 L11.2 13.8 L17.5 13.8 Z" fill="#fff" stroke="#000" stroke-width="1.4" stroke-linejoin="round"/></svg>
@@ -105,6 +105,9 @@
 
     bg.onload = function () { bg.style.display = 'block'; document.body.classList.add('hasbg'); };
 
+    // English defaults; Lua overrides them in the 'init' message (Config.locale).
+    var txt = { enterCode: 'Enter your 6-digit pickup code' };
+
     function pct(n) { return (n * 100) + '%'; }
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
@@ -114,7 +117,7 @@
         // 1 unit = 1/1000 of the screen height in px
         document.documentElement.style.setProperty('--u', (window.innerHeight * r.h / 1000) + 'px');
     }
-    applyRect({ x: 0, y: 0, w: 0.775, h: 1 });
+    applyRect({ x: 0, y: 0, w: 0.63, h: 1 });
 
     function render(d) {
         if (d.view === 'idle' || !d.view) {
@@ -128,7 +131,7 @@
         var html = '';
 
         if (d.view === 'entry') {
-            html += '<div class="head"><img src="logo.png" alt=""><h2>' + esc(d.label) + '</h2><p>Enter your 6-digit pickup code</p></div>';
+            html += '<div class="head"><img src="logo.png" alt=""><h2>' + esc(d.label) + '</h2><p>' + esc(txt.enterCode) + '</p></div>';
             html += '<div class="dots">';
             for (var i = 0; i < 6; i++) html += '<div class="dot' + (i < code.length ? ' filled' : '') + '"></div>';
             html += '</div>';
@@ -155,6 +158,11 @@
         if (d.action === 'init') {
             if (d.rect) applyRect(d.rect);
             document.body.classList.toggle('debug', !!d.debug);
+            if (d.text) {
+                if (d.text.enterCode) txt.enterCode = d.text.enterCode;
+                if (d.text.idleSub) document.getElementById('idleSub').textContent = d.text.idleSub;
+                if (d.text.idleTouch) document.getElementById('idleTouch').textContent = d.text.idleTouch;
+            }
             return;
         }
         render(d);

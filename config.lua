@@ -1,4 +1,7 @@
 Config = {
+    -- Language: any file in locales/ (locales/en.lua = English). Copy en.lua to add a language.
+    locale = 'en',
+
     -- 'auto' detects qbx_core / qb-core / es_extended / falls back to 'standalone'.
     -- 'standalone' has no real money accounts - balance checks are skipped (always allowed).
     framework = 'auto',
@@ -46,7 +49,7 @@ Config = {
         { id = 'hoodie',     label = 'Pullover Hoodie, Unisex',            item = 'pp_hoodie',     price = 48,  icon = '🧥',  cat = 'clothing',  baseRating = 5, baseReviews = 97 },
         { id = 'cap',        label = 'Snapback Cap, Adjustable',           item = 'pp_cap',        price = 25,  icon = '🧢',  cat = 'clothing',  baseRating = 4, baseReviews = 31 },
         { id = 'sneakers',   label = 'Running Sneakers, Lightweight',      item = 'pp_sneakers',   price = 95,  icon = '👟',  cat = 'clothing',  baseRating = 4, baseReviews = 280, stock = 25 },
-        { id = 'sunglasses', label = 'Polarized Sunglasses',               item = 'pp_sunglasses', price = 60,  icon = '🕶️', cat = 'clothing',  baseRating = 5, baseReviews = 60 },
+        { id = 'sunglasses', label = 'Polarized Sunglasses',               item = 'pp_sunglasses', price = 60,  icon = '🕶️',  cat = 'clothing',  baseRating = 5, baseReviews = 60 },
         { id = 'coffee',     label = 'Coffee Beans, Dark Roast 1kg',       item = 'pp_coffee',     price = 18,  icon = '☕',  cat = 'home',      baseRating = 5, baseReviews = 330 },
         { id = 'toolkit',    label = 'Home Toolkit, 45-Piece',             item = 'pp_toolkit',    price = 55,  icon = '🧰',  cat = 'home',      baseRating = 4, baseReviews = 71 },
         { id = 'lamp',       label = 'LED Desk Lamp, Dimmable',            item = 'pp_lamp',       price = 32,  icon = '💡',  cat = 'home',      baseRating = 4, baseReviews = 45 },
@@ -128,7 +131,7 @@ Config = {
         -- Where the screen sits inside that texture, as fractions (0-1) of its width/height.
         -- Tune this until the keypad lines up with the glass. debug = true draws a magenta outline.
         rect = { x = 0.02, y = 0.0, w = 0.57, h = 1.0 },
-        debug = true,
+        debug = false,
         sensitivity = 0.25,               -- virtual cursor speed
         maxDistance = 3.5,                -- auto-close if you walk this far from the locker
         -- Close-up camera while the screen is open (set cam = nil to disable).
@@ -247,10 +250,10 @@ Config.courier = {
         pile = vector3(-430.00, -2787.60, 6.0),
         -- Rental vehicles appear at the first FREE one of these (x, y, z, heading).
         spawns = {
-            vector4(-436.0, -2795.0, 6.0, 0.0),
-            vector4(-441.0, -2795.0, 6.0, 0.0),
-            vector4(-446.0, -2795.0, 6.0, 0.0),
-            vector4(-451.0, -2795.0, 6.0, 0.0),
+            vector4(-445.57, -2789.71, 6.00, 45.17),
+            vector4(-445.57, -2789.71, 6.00, 45.17),
+            vector4(-445.57, -2789.71, 6.00, 45.17),
+            vector4(-445.57, -2789.71, 6.00, 45.17),
         },
         -- Park the rental within returnRadius of this to hand it back (deposit refunded).
         returnPoint = vector3(-441.0, -2792.0, 6.0),
@@ -265,9 +268,7 @@ Config.courier = {
     -- capacity is in box units (s=1, m=2, l=3, xl=4); maxBox is the biggest parcel it can carry.
     vehicles = {
         { key = 'scooter', label = 'Postal Scooter',  model = 'faggio',   level = 1, capacity = 2,  maxBox = 'm',  deposit = 150 },
-        { key = 'car',     label = 'Postal Sedan',    model = 'asea',     level = 2, capacity = 6,  maxBox = 'l',  deposit = 400 },
-        { key = 'van',     label = 'Postal Van',      model = 'boxville2', level = 3, capacity = 16, maxBox = 'xl', deposit = 750 },
-        { key = 'truck',   label = 'Postal Truck',    model = 'mule',     level = 5, capacity = 30, maxBox = 'xl', deposit = 1500 },
+        { key = 'van',     label = 'Prime Postal Van',      model = 'ppboxville', level = 2, capacity = 16, maxBox = 'xl', deposit = 750 },
     },
     units = { s = 1, m = 2, l = 3, xl = 4 },
 

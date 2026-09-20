@@ -66,7 +66,7 @@ local function listNolag(cid)
             or (pmeta and toPoint(pmeta.enterData))
             or (pmeta and toPoint(pmeta.managePoint))
         if coords then
-            local label = (r.label and r.label ~= '') and r.label or r.address or ('Property #' .. r.id)
+            local label = (r.label and r.label ~= '') and r.label or r.address or T('housing.property', r.id)
             out[#out + 1] = {
                 key = 'nolag:' .. r.id,
                 label = label,
@@ -100,7 +100,7 @@ local function listQbx(cid)
         if coords then
             out[#out + 1] = {
                 key = 'qbx:' .. r.id,
-                label = r.property_name or ('Property #' .. r.id),
+                label = r.property_name or T('housing.property', r.id),
                 address = r.property_name,
                 coords = coords,
             }

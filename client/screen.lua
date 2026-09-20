@@ -34,21 +34,34 @@ local function buildEntry()
         local row = (i - 1) // 3
         local label = k
         local kind = 'key'
-        if k == 'clear' then label, kind = 'Clear', 'keysmall' end
+        if k == 'clear' then label, kind = T('screen.clear'), 'keysmall' end
         if k == 'back' then label, kind = '\u{232B}', 'keysmall' end
         add(k, label, 0.06 + col * (cw + gx), 0.33 + row * 0.105, cw, 0.088, kind)
     end
 
-    add('cancel', 'Cancel', 0.06, 0.775, 0.42, 0.09, 'cancel')
-    add('submit', 'Open Locker', 0.52, 0.775, 0.42, 0.09, 'submit')
+    add('cancel', T('screen.cancel'), 0.06, 0.775, 0.42, 0.09, 'cancel')
+    add('submit', T('screen.open'), 0.52, 0.775, 0.42, 0.09, 'submit')
     return b
 end
 
 local function buildRetry()
-    return { { id = 'retry', label = 'Try Again', x = 0.06, y = 0.70, w = 0.88, h = 0.09, kind = 'submit' } }
+    return { { id = 'retry', label = T('screen.retry'), x = 0.06, y = 0.70, w = 0.88, h = 0.09, kind = 'submit' } }
 end
 
 -- ─── DUI push ─────────────────────────────────────────────────────────────────
+
+-- First message to the page: geometry plus the few texts the page draws itself (a DUI has no NUI
+-- callbacks, so it can't fetch the language dictionary - Lua sends what it needs).
+local function initMessage()
+    return {
+        action = 'init', rect = rect, debug = cfg.debug and true or false,
+        text = {
+            idleSub = T('screen.idle.sub'),
+            idleTouch = T('screen.idle.touch'),
+            enterCode = T('screen.enterCode'),
+        },
+    }
+end
 
 local function push()
     if not dui then return end
@@ -107,14 +120,14 @@ local function submit()
         s.dirty = true
 
         if s.ok then
-            s.msg = 'Locker door opened - grab your parcel!'
+            s.msg = T('screen.opened')
             s.buttons = {}
             SendNUIMessage({ action = 'as-postalprime:updated' }) -- refresh the phone app if it's open
             SetTimeout(1600, function()
                 if session == s then PPScreen.close() end
             end)
         else
-            s.msg = (res and res.error) or 'Failed to open locker'
+            s.msg = (res and res.error) or T('screen.failed')
             s.buttons = buildRetry()
         end
     end)
@@ -189,13 +202,13 @@ function PPScreen.open(lockerId, label, prop)
     if session then return true end
 
     local s = {
-        lockerId = lockerId, label = label or 'Locker', prop = prop,
+        lockerId = lockerId, label = label or T('screen.lockerDefault'), prop = prop,
         view = 'entry', code = '', buttons = buildEntry(),
         cx = 0.5, cy = 0.5, hover = nil, busy = false, ok = nil, msg = nil, dirty = true,
     }
     session = s
     startCam(s)
-    SendDuiMessage(dui, json.encode({ action = 'init', rect = rect, debug = cfg.debug and true or false }))
+    SendDuiMessage(dui, json.encode(initMessage()))
 
     CreateThread(function()
         local sens = cfg.sensitivity or 0.6
@@ -254,20 +267,20 @@ end
 for d = 0, 9 do
     local n = tostring(d)
     RegisterCommand('pp_screen_' .. n, function() keyPress(n) end, false)
-    RegisterKeyMapping('pp_screen_' .. n, 'Postal Prime screen: ' .. n, 'keyboard', n)
+    RegisterKeyMapping('pp_screen_' .. n, T('keybind.screenDigit', n), 'keyboard', n)
     RegisterCommand('pp_screen_np' .. n, function() keyPress(n) end, false)
-    RegisterKeyMapping('pp_screen_np' .. n, 'Postal Prime screen: numpad ' .. n, 'keyboard', 'NUMPAD' .. n)
+    RegisterKeyMapping('pp_screen_np' .. n, T('keybind.screenNumpad', n), 'keyboard', 'NUMPAD' .. n)
 end
 
 RegisterCommand('pp_screen_back', function() keyPress('back') end, false)
-RegisterKeyMapping('pp_screen_back', 'Postal Prime screen: delete digit', 'keyboard', 'BACK')
+RegisterKeyMapping('pp_screen_back', T('keybind.screenBack'), 'keyboard', 'BACK')
 
 RegisterCommand('pp_screen_enter', function()
     local s = session
     if not s then return end
     if s.view == 'entry' then press('submit') elseif s.view == 'result' then press('retry') end
 end, false)
-RegisterKeyMapping('pp_screen_enter', 'Postal Prime screen: confirm', 'keyboard', 'RETURN')
+RegisterKeyMapping('pp_screen_enter', T('keybind.screenConfirm'), 'keyboard', 'RETURN')
 
 -- ─── DUI + texture swap ──────────────────────────────────────────────────────
 
@@ -293,7 +306,7 @@ CreateThread(function()
     CreateRuntimeTextureFromDuiHandle(txd, 'screen', GetDuiHandle(dui))
     AddReplaceTexture(cfg.txd or 'aslocker', cfg.txn or 'aslocker_diffuse_2', txdName, 'screen')
 
-    SendDuiMessage(dui, json.encode({ action = 'init', rect = rect, debug = cfg.debug and true or false }))
+    SendDuiMessage(dui, json.encode(initMessage()))
     duiReady = true
     print(('[as-postalprime] locker screen ready: %s / %s -> DUI %dx%d'):format(cfg.txd or 'aslocker', cfg.txn or 'aslocker_diffuse_2', size, size))
 end)

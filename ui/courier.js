@@ -7,7 +7,7 @@
     'use strict';
 
     var RES = 'as-postalprime';
-    var SIZE = { s: 'Small', m: 'Medium', l: 'Large', xl: 'X-Large' };
+    function sizeLabel(k) { return ({ s: t('size.s'), m: t('size.m'), l: t('size.l'), xl: t('size.xl') })[k] || k; }
 
     var IC = {
         shift: '<path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="8.5"/>',
@@ -23,14 +23,14 @@
     function ic(n) { return '<svg class="pc-i" viewBox="0 0 24 24">' + IC[n] + '</svg>'; }
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
     function fmt(sec) { sec = Math.max(0, Math.floor(sec)); return Math.floor(sec / 60) + ':' + ('0' + (sec % 60)).slice(-2); }
-    function money(n) { return '$' + Number(n || 0).toLocaleString('en-US'); }
+    function money(n) { return '$' + Number(n || 0).toLocaleString(t('meta.numberLocale')); }
 
     function post(name, data) {
         return fetch('https://' + RES + '/' + RES + '/courier:' + name, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json; charset=UTF-8' },
             body: JSON.stringify(data || {})
-        }).then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: 'No response' }; });
+        }).then(function (r) { return r.json(); }).catch(function () { return { ok: false, error: t('err.noResponse') }; });
     }
 
     // ── skeleton ────────────────────────────────────────────────────────────
@@ -38,13 +38,13 @@
     root.id = 'ppc';
     root.innerHTML =
         '<div id="pcToasts"></div>' +
-        '<div id="pcHud" class="pc-off"><div class="pc-hh">RUN <span id="pcHudCount"></span></div><div id="pcHudRows"></div>' +
-        '<div class="pc-kb pc-off" id="pcHudKb"><span class="pc-key">X</span> Put parcel down</div></div>' +
+        '<div id="pcHud" class="pc-off"><div class="pc-hh"><span data-i18n="hud.run">RUN</span> <span id="pcHudCount"></span></div><div id="pcHudRows"></div>' +
+        '<div class="pc-kb pc-off" id="pcHudKb"><span class="pc-key">X</span> <span data-i18n="hud.putDown">Put parcel down</span></div></div>' +
         '<div id="pcProg" class="pc-off"><div class="pc-top"><span id="pcProgLabel"></span><span class="pc-pct" id="pcProgPct">0%</span></div>' +
-        '<div class="pc-track"><div class="pc-fill" id="pcProgFill"></div></div><div class="pc-hint" id="pcProgHint">Press X to cancel</div></div>' +
+        '<div class="pc-track"><div class="pc-fill" id="pcProgFill"></div></div><div class="pc-hint" id="pcProgHint" data-i18n="depot.cancelHint">Press X to cancel</div></div>' +
         '<div id="pcDepot" class="pc-off"><div class="pc-win">' +
-        '<div class="pc-head"><img class="pc-logo" src="logo.png" alt="Postal Prime"><span class="pc-title">Depot</span><span class="pc-sub" id="pcSub"></span>' +
-        '<button class="pc-x" id="pcClose" title="Close (Esc)">' + ic('close') + '</button></div>' +
+        '<div class="pc-head"><img class="pc-logo" src="logo.png" alt="Postal Prime"><span class="pc-title" data-i18n="depot.title">Depot</span><span class="pc-sub" id="pcSub"></span>' +
+        '<button class="pc-x" id="pcClose" title="Close (Esc)" data-i18n-title="depot.close">' + ic('close') + '</button></div>' +
         '<div class="pc-main"><aside class="pc-side"><nav class="pc-nav" id="pcNav"></nav><div class="pc-prof" id="pcProf"></div></aside>' +
         '<main class="pc-content" id="pcBody"></main></div><div id="pcInToasts"></div></div></div>' +
         '<div id="pcDlg" class="pc-off"></div>';
@@ -97,14 +97,14 @@
         var visible = hud.on && (hud.rows.length > 0 || hud.carry);
         h.classList.toggle('pc-off', !visible);
         if (!visible) return;
-        $('pcHudCount').textContent = hud.rows.length ? hud.rows.length + ' parcel' + (hud.rows.length > 1 ? 's' : '') : '';
+        $('pcHudCount').textContent = hud.rows.length ? (hud.rows.length > 1 ? t('hud.parcel.other', hud.rows.length) : t('hud.parcel.one', hud.rows.length)) : '';
         $('pcHudKb').classList.toggle('pc-off', !hud.carry);
         $('pcHudRows').innerHTML = hud.rows.map(function (r) {
-            var cls = 'dim', txt = 'at depot';
+            var cls = 'dim', txt = t('hud.atDepot');
             if (r.state === 'loaded') {
                 var left = hudLeft(r) || 0;
                 if (left >= 0) { txt = fmt(left); cls = left < 30 ? 'warn' : ''; }
-                else { txt = 'LATE ' + fmt(-left); cls = 'late'; }
+                else { txt = t('depot.late', fmt(-left)); cls = 'late'; }
             }
             return '<div class="pc-hr"><span class="n">' + esc(r.label) + '</span><span class="s">' + esc(String(r.size || 'm').toUpperCase()) +
                 '</span><span class="t ' + cls + '">' + txt + '</span></div>';
@@ -128,9 +128,9 @@
     function timeCell(c) {
         var left = claimLeft(c);
         if (left == null) return { txt: '-', cls: '' };
-        return { txt: left >= 0 ? fmt(left) : 'LATE ' + fmt(-left), cls: left < 0 ? 't-late' : (left < 30 ? 't-warn' : 't-ok') };
+        return { txt: left >= 0 ? fmt(left) : t('depot.late', fmt(-left)), cls: left < 0 ? 't-late' : (left < 30 ? 't-warn' : 't-ok') };
     }
-    function kindTag(k) { return '<span class="pc-tag ' + k + '">' + (k === 'home' ? 'Home' : 'Locker') + '</span>'; }
+    function kindTag(k) { return '<span class="pc-tag ' + k + '">' + (k === 'home' ? t('depot.kind.home') : t('depot.kind.locker')) + '</span>'; }
     function tblHead(cols) {
         return '<thead><tr>' + cols.map(function (c) { return '<th' + (c[1] ? ' class="r"' : '') + '>' + c[0] + '</th>'; }).join('') + '</tr></thead>';
     }
@@ -144,90 +144,90 @@
 
     function renderNav() {
         var claims = st.claims || [];
-        var items = [['shift', 'Shift', 0], ['veh', 'Vehicles', 0], ['board', 'Order board', st.onDuty ? (st.boardCount || 0) : 0], ['run', 'My run', claims.length]];
-        $('pcNav').innerHTML = items.map(function (t) {
-            return '<button data-tab="' + t[0] + '" class="' + (tab === t[0] ? 'on' : '') + '">' + ic(t[0]) + t[1] + (t[2] ? '<span class="pc-n">' + t[2] + '</span>' : '') + '</button>';
+        var items = [['shift', t('depot.nav.shift'), 0], ['veh', t('depot.nav.vehicles'), 0], ['board', t('depot.nav.board'), st.onDuty ? (st.boardCount || 0) : 0], ['run', t('depot.nav.run'), claims.length]];
+        $('pcNav').innerHTML = items.map(function (nv) {
+            return '<button data-tab="' + nv[0] + '" class="' + (tab === nv[0] ? 'on' : '') + '">' + ic(nv[0]) + esc(nv[1]) + (nv[2] ? '<span class="pc-n">' + nv[2] + '</span>' : '') + '</button>';
         }).join('');
         var top = st.nextXp == null;
         var pct = top ? 100 : Math.round(((st.xp - st.levelXp) / Math.max(1, st.nextXp - st.levelXp)) * 100);
-        $('pcProf').innerHTML = '<div class="r1"><span>Level ' + st.level + '</span><span class="pc-mono">' + pct + '%</span></div>' +
-            '<div class="r2">' + (top ? st.xp + ' XP - max level' : st.xp + ' / ' + st.nextXp + ' XP') + '</div><div class="pc-meter"><i style="width:' + pct + '%"></i></div>';
+        $('pcProf').innerHTML = '<div class="r1"><span>' + esc(t('depot.prof.level', st.level)) + '</span><span class="pc-mono">' + pct + '%</span></div>' +
+            '<div class="r2">' + esc(top ? t('depot.prof.maxXp', st.xp) : t('depot.prof.xp', st.xp, st.nextXp)) + '</div><div class="pc-meter"><i style="width:' + pct + '%"></i></div>';
     }
 
     function viewShift() {
         var r = st.rental, info = st.info || {};
-        var h = '<h2 class="pc-h1">Shift</h2><p class="pc-lead">Clock on, sign out a vehicle, then take orders from the board.</p><div class="pc-cols"><div>';
-        h += '<div class="pc-box"><div class="pc-box-h">Status</div><div class="pc-status"><span class="pc-dot' + (st.onDuty ? ' on' : '') + '"></span>' +
-            '<div style="flex:1"><b>' + (st.onDuty ? 'On shift' : 'Off shift') + '</b><div class="pc-muted">' + (st.onDuty ? 'New orders appear on the board' : 'Clock on to receive orders') + '</div></div>' +
-            '<button class="pc-btn ' + (st.onDuty ? '' : 'primary') + '" data-act="duty">' + (st.onDuty ? 'Clock off' : 'Clock on') + '</button></div></div>';
-        h += '<div class="pc-box"><div class="pc-box-h">Performance</div><div class="pc-box-b">' +
-            '<div class="pc-kv"><span>Courier level</span><b>' + st.level + '</b></div>' +
-            '<div class="pc-kv"><span>Deliveries</span><b class="pc-mono">' + (st.deliveries || 0) + '</b></div>' +
-            '<div class="pc-kv"><span>Total earned</span><b class="pc-mono">' + money(st.earned) + '</b></div>' +
-            '<div class="pc-kv"><span>Parcels at once</span><b class="pc-mono">' + st.batch + '</b></div></div></div>';
+        var h = '<h2 class="pc-h1">' + esc(t('depot.nav.shift')) + '</h2><p class="pc-lead">' + esc(t('depot.shift.lead')) + '</p><div class="pc-cols"><div>';
+        h += '<div class="pc-box"><div class="pc-box-h">' + esc(t('depot.shift.status')) + '</div><div class="pc-status"><span class="pc-dot' + (st.onDuty ? ' on' : '') + '"></span>' +
+            '<div style="flex:1"><b>' + esc(st.onDuty ? t('depot.onShift') : t('depot.offShift')) + '</b><div class="pc-muted">' + esc(st.onDuty ? t('depot.shift.newOrders') : t('depot.shift.clockOnToReceive')) + '</div></div>' +
+            '<button class="pc-btn ' + (st.onDuty ? '' : 'primary') + '" data-act="duty">' + esc(st.onDuty ? t('depot.shift.clockOff') : t('depot.shift.clockOn')) + '</button></div></div>';
+        h += '<div class="pc-box"><div class="pc-box-h">' + esc(t('depot.shift.performance')) + '</div><div class="pc-box-b">' +
+            '<div class="pc-kv"><span>' + esc(t('depot.shift.level')) + '</span><b>' + st.level + '</b></div>' +
+            '<div class="pc-kv"><span>' + esc(t('depot.shift.deliveries')) + '</span><b class="pc-mono">' + (st.deliveries || 0) + '</b></div>' +
+            '<div class="pc-kv"><span>' + esc(t('depot.shift.earned')) + '</span><b class="pc-mono">' + money(st.earned) + '</b></div>' +
+            '<div class="pc-kv"><span>' + esc(t('depot.shift.atOnce')) + '</span><b class="pc-mono">' + st.batch + '</b></div></div></div>';
         h += '</div><div>';
         if (r) {
-            h += '<div class="pc-box"><div class="pc-box-h">Company vehicle<span class="pc-tag ok" style="margin-left:auto">Out</span></div><div class="pc-box-b">' +
-                '<div class="pc-kv"><span>Vehicle</span><b>' + esc(r.label) + '</b></div><div class="pc-kv"><span>Plate</span><b class="pc-mono">' + esc(r.plate) + '</b></div>' +
-                '<div class="pc-kv"><span>Deposit</span><b class="pc-mono">' + money(r.deposit) + '</b></div>' +
-                '<div class="pc-kv"><span>Capacity</span><b class="pc-mono">' + (st.usedUnits || 0) + ' / ' + r.capacity + ' units</b></div></div>' +
-                '<div class="pc-pad"><button class="pc-btn danger" style="width:100%" data-act="return">Return vehicle</button></div>' +
-                '<div class="pc-note">Park at the depot first.' + (info.damageTolerance != null ? ' Damage over ' + info.damageTolerance + '% is deducted from the deposit.' : '') + '</div></div>';
+            h += '<div class="pc-box"><div class="pc-box-h">' + esc(t('depot.veh.box')) + '<span class="pc-tag ok" style="margin-left:auto">' + esc(t('depot.veh.out')) + '</span></div><div class="pc-box-b">' +
+                '<div class="pc-kv"><span>' + esc(t('depot.veh.vehicle')) + '</span><b>' + esc(r.label) + '</b></div><div class="pc-kv"><span>' + esc(t('depot.veh.plate')) + '</span><b class="pc-mono">' + esc(r.plate) + '</b></div>' +
+                '<div class="pc-kv"><span>' + esc(t('depot.veh.deposit')) + '</span><b class="pc-mono">' + money(r.deposit) + '</b></div>' +
+                '<div class="pc-kv"><span>' + esc(t('depot.veh.capacity')) + '</span><b class="pc-mono">' + esc(t('depot.veh.capacityUsed', st.usedUnits || 0, r.capacity)) + '</b></div></div>' +
+                '<div class="pc-pad"><button class="pc-btn danger" style="width:100%" data-act="return">' + esc(t('depot.veh.return')) + '</button></div>' +
+                '<div class="pc-note">' + esc(t('depot.veh.parkFirst')) + (info.damageTolerance != null ? ' ' + esc(t('depot.veh.damageNote', info.damageTolerance)) : '') + '</div></div>';
         } else {
-            h += '<div class="pc-box"><div class="pc-box-h">Company vehicle</div><div class="pc-empty tight"><b>No vehicle</b>Rent one from the Vehicles page. The deposit is refunded when you return it.</div></div>';
+            h += '<div class="pc-box"><div class="pc-box-h">' + esc(t('depot.veh.box')) + '</div><div class="pc-empty tight"><b>' + esc(t('depot.veh.none')) + '</b>' + esc(t('depot.veh.noneText')) + '</div></div>';
         }
         return h + '</div></div>';
     }
 
     function viewVeh() {
-        var h = '<h2 class="pc-h1">Vehicles</h2><p class="pc-lead">Deposits are refunded on return' + ((st.info || {}).damageTolerance != null ? ', minus any damage' : '') + '. Higher levels unlock larger vehicles.</p>';
-        h += '<div class="pc-box pc-tblbox"><table>' + tblHead([['Vehicle'], ['Capacity'], ['Largest box'], ['Deposit', 1], ['', 0]]) + '<tbody>';
+        var h = '<h2 class="pc-h1">' + esc(t('depot.vehicles.title')) + '</h2><p class="pc-lead">' + esc(((st.info || {}).damageTolerance != null) ? t('depot.vehicles.leadDamage') : t('depot.vehicles.lead')) + '</p>';
+        h += '<div class="pc-box pc-tblbox"><table>' + tblHead([[t('depot.vehicles.colVehicle')], [t('depot.vehicles.colCapacity')], [t('depot.vehicles.colLargest')], [t('depot.vehicles.colDeposit'), 1], ['', 0]]) + '<tbody>';
         (st.vehicles || []).forEach(function (v) {
             var locked = !v.unlocked, cant = locked || !!st.rental || !st.onDuty;
-            var label = locked ? 'Level ' + v.level : (st.rental ? 'In use' : (!st.onDuty ? 'Clock on' : 'Rent'));
-            h += '<tr class="' + (locked ? 'dim' : '') + '"><td><span class="pc-dest">' + esc(v.label) + '</span></td><td class="pc-mono">' + v.capacity + ' units</td><td>' + (SIZE[v.maxBox] || v.maxBox) + '</td>' +
-                '<td class="r pc-mono">' + money(v.deposit) + '</td><td class="r"><button class="pc-btn sm ' + (cant ? '' : 'primary') + '" data-rent="' + esc(v.key) + '" ' + (cant ? 'disabled' : '') + '>' + label + '</button></td></tr>';
+            var label = locked ? t('depot.vehicles.level', v.level) : (st.rental ? t('depot.vehicles.inUse') : (!st.onDuty ? t('depot.vehicles.clockOn') : t('depot.vehicles.rent')));
+            h += '<tr class="' + (locked ? 'dim' : '') + '"><td><span class="pc-dest">' + esc(v.label) + '</span></td><td class="pc-mono">' + esc(t('depot.units', v.capacity)) + '</td><td>' + esc(sizeLabel(v.maxBox)) + '</td>' +
+                '<td class="r pc-mono">' + money(v.deposit) + '</td><td class="r"><button class="pc-btn sm ' + (cant ? '' : 'primary') + '" data-rent="' + esc(v.key) + '" ' + (cant ? 'disabled' : '') + '>' + esc(label) + '</button></td></tr>';
         });
         return h + '</tbody></table></div>';
     }
 
     function viewBoard() {
         var mins = (st.info || {}).boardMinutes;
-        var h = '<h2 class="pc-h1">Order board</h2><p class="pc-lead">Ready orders waiting for a courier.' + (mins ? ' Unclaimed orders fall back to the NPC courier after ' + mins + ' minutes.' : '') + '</p>';
-        if (!st.onDuty) return h + '<div class="pc-box"><div class="pc-empty">' + ic('shift') + '<b>You\'re off shift</b>Clock on to see the order board.</div></div>';
-        if (!board) return h + '<div class="pc-box"><div class="pc-empty"><b>Loading</b></div></div>';
-        if (!board.length) return h + '<div class="pc-box"><div class="pc-empty">' + ic('empty') + '<b>No orders right now</b>New orders appear as customer parcels become ready.</div></div>';
-        h += '<div class="pc-box pc-tblbox"><table>' + tblHead([['Type'], ['Destination'], ['Box'], ['Distance', 1], ['Est. pay', 1], ['', 0]]) + '<tbody>';
+        var h = '<h2 class="pc-h1">' + esc(t('depot.board.title')) + '</h2><p class="pc-lead">' + esc(t('depot.board.lead')) + (mins ? ' ' + esc(t('depot.board.leadMinutes', mins)) : '') + '</p>';
+        if (!st.onDuty) return h + '<div class="pc-box"><div class="pc-empty">' + ic('shift') + '<b>' + esc(t('depot.board.offShift')) + '</b>' + esc(t('depot.board.offShiftText')) + '</div></div>';
+        if (!board) return h + '<div class="pc-box"><div class="pc-empty"><b>' + esc(t('depot.board.loading')) + '</b></div></div>';
+        if (!board.length) return h + '<div class="pc-box"><div class="pc-empty">' + ic('empty') + '<b>' + esc(t('depot.board.empty')) + '</b>' + esc(t('depot.board.emptyText')) + '</div></div>';
+        h += '<div class="pc-box pc-tblbox"><table>' + tblHead([[t('depot.board.colType')], [t('depot.board.colDestination')], [t('depot.board.colBox')], [t('depot.board.colDistance'), 1], [t('depot.board.colPay'), 1], ['', 0]]) + '<tbody>';
         board.forEach(function (o) {
             var b = o.blocked;
             h += '<tr class="' + (b ? 'dim' : '') + '"><td>' + kindTag(o.kind) + '</td><td><div class="pc-dest">' + esc(o.label) + '</div>' + (b ? '<div class="pc-why">' + esc(b) + '</div>' : '') + '</td>' +
-                '<td>' + (SIZE[o.size] || o.size) + '</td><td class="r pc-mono">' + Number(o.km).toFixed(1) + ' km</td><td class="r pc-mono">' + money(o.pay) + '</td>' +
-                '<td class="r"><button class="pc-btn sm ' + (b ? '' : 'primary') + '" data-claim="' + esc(o.orderId) + '" ' + (b ? 'disabled' : '') + '>Claim</button></td></tr>';
+                '<td>' + esc(sizeLabel(o.size)) + '</td><td class="r pc-mono">' + esc(t('depot.km', Number(o.km).toFixed(1))) + '</td><td class="r pc-mono">' + money(o.pay) + '</td>' +
+                '<td class="r"><button class="pc-btn sm ' + (b ? '' : 'primary') + '" data-claim="' + esc(o.orderId) + '" ' + (b ? 'disabled' : '') + '>' + esc(t('depot.board.claim')) + '</button></td></tr>';
         });
         return h + '</tbody></table></div>';
     }
 
     function viewRun() {
         var claims = st.claims || [];
-        var h = '<h2 class="pc-h1">My run</h2><p class="pc-lead">Collect each parcel from the depot pile, load it into your vehicle, then deliver before the timer runs out.</p>';
-        if (!claims.length) return h + '<div class="pc-box"><div class="pc-empty">' + ic('empty') + '<b>No parcels on your run</b>Claim some from the order board.</div></div>';
-        h += '<div class="pc-box pc-tblbox"><table>' + tblHead([['Destination'], ['Type'], ['Box'], ['Status'], ['Time left', 1], ['', 0]]) + '<tbody>';
+        var h = '<h2 class="pc-h1">' + esc(t('depot.run.title')) + '</h2><p class="pc-lead">' + esc(t('depot.run.lead')) + '</p>';
+        if (!claims.length) return h + '<div class="pc-box"><div class="pc-empty">' + ic('empty') + '<b>' + esc(t('depot.run.empty')) + '</b>' + esc(t('depot.run.emptyText')) + '</div></div>';
+        h += '<div class="pc-box pc-tblbox"><table>' + tblHead([[t('depot.board.colDestination')], [t('depot.board.colType')], [t('depot.board.colBox')], [t('depot.run.colStatus')], [t('depot.run.colTimeLeft'), 1], ['', 0]]) + '<tbody>';
         claims.forEach(function (c) {
             var loaded = c.state === 'loaded', tc = timeCell(c);
-            h += '<tr><td class="pc-dest">' + esc(c.label) + '</td><td>' + kindTag(c.kind) + '</td><td>' + (SIZE[c.size] || c.size) + '</td>' +
-                '<td>' + (loaded ? '<span class="pc-tag ok">Out for delivery</span>' : '<span class="pc-tag">At depot pile</span>') + '</td>' +
+            h += '<tr><td class="pc-dest">' + esc(c.label) + '</td><td>' + kindTag(c.kind) + '</td><td>' + esc(sizeLabel(c.size)) + '</td>' +
+                '<td>' + (loaded ? '<span class="pc-tag ok">' + esc(t('depot.run.outForDelivery')) + '</span>' : '<span class="pc-tag">' + esc(t('depot.run.atPile')) + '</span>') + '</td>' +
                 '<td class="r pc-mono ' + (loaded ? tc.cls : '') + '"' + (loaded ? ' data-cid="' + esc(c.orderId) + '"' : '') + '>' + (loaded ? tc.txt : '-') + '</td>' +
-                '<td class="r">' + (loaded ? '' : '<button class="pc-btn sm" data-put="' + esc(c.orderId) + '">Put back</button>') + '</td></tr>';
+                '<td class="r">' + (loaded ? '' : '<button class="pc-btn sm" data-put="' + esc(c.orderId) + '">' + esc(t('depot.run.putBack')) + '</button>') + '</td></tr>';
         });
-        h += '</tbody></table></div><div class="pc-foot"><span>Capacity <b class="pc-mono">' + (st.usedUnits || 0) + ' / ' + (st.rental ? st.rental.capacity : '-') + '</b> units</span>' +
-            '<span>Parcels <b class="pc-mono">' + claims.length + ' / ' + st.batch + '</b></span><span class="sp"></span><button class="pc-btn danger" data-act="abandon">Abandon run</button></div>';
+        h += '</tbody></table></div><div class="pc-foot"><span>' + t('depot.run.capacity', '<b class="pc-mono">' + esc((st.usedUnits || 0) + ' / ' + (st.rental ? st.rental.capacity : '-')) + '</b>') + '</span>' +
+            '<span>' + t('depot.run.parcels', '<b class="pc-mono">' + esc(claims.length + ' / ' + st.batch) + '</b>') + '</span><span class="sp"></span><button class="pc-btn danger" data-act="abandon">' + esc(t('depot.run.abandon')) + '</button></div>';
         return h;
     }
 
     function render() {
         if (!isOpen || !st) return;
         $('pcDepot').classList.remove('pc-off');
-        $('pcSub').textContent = st.onDuty ? 'On shift' : 'Off shift';
+        $('pcSub').textContent = st.onDuty ? t('depot.onShift') : t('depot.offShift');
         renderNav();
         var body = $('pcBody'), keep = body.scrollTop;
         body.innerHTML = ({ shift: viewShift, veh: viewVeh, board: viewBoard, run: viewRun }[tab] || viewShift)();
@@ -242,9 +242,9 @@
             var id = cells[i].getAttribute('data-cid');
             var c = (st.claims || []).filter(function (x) { return String(x.orderId) === id; })[0];
             if (!c) continue;
-            var t = timeCell(c);
-            cells[i].textContent = t.txt;
-            cells[i].className = 'r pc-mono ' + t.cls;
+            var tc = timeCell(c);
+            cells[i].textContent = tc.txt;
+            cells[i].className = 'r pc-mono ' + tc.cls;
         }
     }, 1000);
 
@@ -270,6 +270,7 @@
     }
 
     function openDepot(state) {
+        if (!I18N_LOADED) loadLocale(function () { if (isOpen && st) render(); });
         isOpen = true; tab = 'shift'; board = null; pending = false;
         setState(state);
         isOpen = true;
@@ -313,11 +314,11 @@
         if (act_ === 'duty') return act('duty', { on: !st.onDuty }, b);
         if (act_ === 'return') return act('return', {}, b);
         if (act_ === 'abandon') {
-            return confirmDlg('Abandon run?', 'Every parcel on your run goes back to the NPC courier and you earn nothing for them. You keep your vehicle.', 'Abandon run', function () { act('abandon', {}); });
+            return confirmDlg(t('depot.run.abandonTitle'), t('depot.run.abandonText'), t('depot.run.abandon'), function () { act('abandon', {}); });
         }
         var rent = b.getAttribute('data-rent');
         if (rent) {
-            b.textContent = 'Signing out...';
+            b.textContent = t('depot.vehicles.signing');
             return act('rent', { key: rent }, b).then(function (res) { if (res && res.ok) { tab = 'shift'; render(); } });
         }
         var claim = b.getAttribute('data-claim');
@@ -337,7 +338,7 @@
     function confirmDlg(title, text, yesLabel, yes) {
         var d = $('pcDlg');
         d.innerHTML = '<div class="pc-dlg"><div class="pc-b"><h3>' + esc(title) + '</h3><p>' + esc(text) + '</p></div>' +
-            '<div class="pc-acts"><button class="pc-btn" id="pcNo">Cancel</button><button class="pc-btn primary" id="pcYes">' + esc(yesLabel) + '</button></div></div>';
+            '<div class="pc-acts"><button class="pc-btn" id="pcNo">' + esc(t('depot.dlg.cancel')) + '</button><button class="pc-btn primary" id="pcYes">' + esc(yesLabel) + '</button></div></div>';
         d.classList.remove('pc-off');
         dlgCancel = function () { };
         $('pcNo').onclick = function () { closeDlg(); };
@@ -346,14 +347,13 @@
     function pickDlg(title, items) {
         var d = $('pcDlg');
         var at = Date.now();
-        d.innerHTML = '<div class="pc-dlg"><div class="pc-b"><h3>' + esc(title) + '</h3><p>Nearest first.</p><div class="pc-pick">' +
+        d.innerHTML = '<div class="pc-dlg"><div class="pc-b"><h3>' + esc(title) + '</h3><p>' + esc(t('depot.pick.nearest')) + '</p><div class="pc-pick">' +
             items.map(function (it) {
                 var left = it.left == null ? null : it.left - (Date.now() - at) / 1000;
-                var t = left == null ? '' : (left >= 0 ? fmt(left) : 'LATE ' + fmt(-left));
+                var tmTxt = left == null ? '' : (left >= 0 ? fmt(left) : t('depot.late', fmt(-left)));
                 var cls = left != null && left < 0 ? 'late' : (left != null && left < 30 ? 'warn' : '');
-                return '<button data-id="' + esc(it.orderId) + '"><span class="nm">' + esc(it.label) + '<span class="mt">' + (SIZE[it.size] || it.size) + ' box  -  ' +
-                    (it.km != null ? Number(it.km).toFixed(1) + ' km away' : '') + '</span></span><span class="tm ' + cls + '">' + t + '</span></button>';
-            }).join('') + '</div></div><div class="pc-acts"><button class="pc-btn" id="pcNo">Cancel</button></div></div>';
+                return '<button data-id="' + esc(it.orderId) + '"><span class="nm">' + esc(it.label) + '<span class="mt">' + esc(t('depot.pick.meta', sizeLabel(it.size), it.km != null ? Number(it.km).toFixed(1) : '')) + '</span></span><span class="tm ' + cls + '">' + tmTxt + '</span></button>';
+            }).join('') + '</div></div><div class="pc-acts"><button class="pc-btn" id="pcNo">' + esc(t('depot.dlg.cancel')) + '</button></div></div>';
         d.classList.remove('pc-off');
         dlgCancel = function () { post('pick', { orderId: null }); };
         $('pcNo').onclick = function () { closeDlg(); };
@@ -372,6 +372,12 @@
         if (isOpen) closeDepot();
     });
 
+    // Language dictionary (ui/i18n.js): the English defaults above/in the markup stay if it never arrives.
+    loadLocale(function () {
+        renderHud();
+        if (isOpen && st) render();
+    });
+
     // ── messages from client/courier.lua ────────────────────────────────────
     window.addEventListener('message', function (event) {
         var d = event.data;
@@ -380,11 +386,11 @@
             case 'as-postalprime:courier:open': openDepot(d.state); break;
             case 'as-postalprime:courier:close': closeDepot(); break;
             case 'as-postalprime:courier:state': if (isOpen) setState(d.state); break;
-            case 'as-postalprime:toast': toast(d.title || 'Postal Prime', d.description || '', d.type); break;
+            case 'as-postalprime:toast': toast(d.title || t('app.name'), d.description || '', d.type); break;
             case 'as-postalprime:courier:progress': progressStart(d.label, d.duration, d.cancellable); break;
             case 'as-postalprime:courier:progressStop': progressStop(); break;
             case 'as-postalprime:courier:hud': setHud(d); break;
-            case 'as-postalprime:courier:pick': pickDlg(d.title || 'Take which parcel?', d.items || []); break;
+            case 'as-postalprime:courier:pick': pickDlg(d.title || t('courier.pick.title'), d.items || []); break;
         }
     });
 })();

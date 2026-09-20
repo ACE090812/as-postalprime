@@ -12,6 +12,11 @@ CreateThread(function()
     end
 end)
 
+-- Language dictionary for the NUI pages (see ui/i18n.js). Config.locale picks the language.
+RegisterNUICallback('as-postalprime/locale', function(_, cb)
+    cb(LocaleDict())
+end)
+
 RegisterNUICallback('as-postalprime/state', function(_, cb)
     local result = lib.callback.await('as-postalprime:getState', false)
     if result and result.lockers then
@@ -74,7 +79,7 @@ AddEventHandler('as-postalprime:client:orderReady', function(coords, lockerLabel
     SetBlipScale(orderBlip, 0.9)
     SetBlipAsShortRange(orderBlip, false)
     BeginTextCommandSetBlipName('STRING')
-    AddTextComponentString(('Postal Prime - %s'):format(lockerLabel))
+    AddTextComponentString(T('blip.order', lockerLabel))
     EndTextCommandSetBlipName(orderBlip)
     SetNewWaypoint(coords.x, coords.y)
 end)
@@ -159,7 +164,7 @@ local function spawnBox(lockerId, doorSlot)
     local coords = GetOffsetFromEntityInWorldCoords(prop, def.x, def.y, def.z)
     takeZones[lockerId] = PPTarget.addSphereZone(
         'as-postalprime:takebox_' .. lockerId, coords, Config.lockerWall.takeRadius or 0.5,
-        'fa-solid fa-box', 'Take Parcel', 2.5,
+        'fa-solid fa-box', T('target.takeParcel'), 2.5,
         function()
             TriggerServerEvent('as-postalprime:takeBox', lockerId, doorSlot)
             removeTakeZone(lockerId)
@@ -194,13 +199,13 @@ local function closeLockerKeypad()
 end
 
 RegisterNUICallback('as-postalprime/locker:submit', function(data, cb)
-    if not pendingLockerId then cb({ ok = false, error = 'No locker selected' }) return end
+    if not pendingLockerId then cb({ ok = false, error = T('err.noLocker') }) return end
     local code = data and data.code
     local result = lib.callback.await('as-postalprime:collect', false, { lockerId = pendingLockerId, code = code })
     if result and result.ok then
         SendNUIMessage({ action = 'as-postalprime:updated' })
     end
-    cb(result or { ok = false, error = 'No response' })
+    cb(result or { ok = false, error = T('err.noResponse') })
 end)
 
 RegisterNUICallback('as-postalprime/locker:close', function(_, cb)
@@ -220,7 +225,7 @@ CreateThread(function()
 
         PPTarget.addEntity(
             obj, 'as-postalprime:collect_' .. locker.id,
-            'fa-solid fa-box-open', 'Open Postal Prime Locker', Config.lockerWall.interactDistance or 2.0,
+            'fa-solid fa-box-open', T('target.openLocker'), Config.lockerWall.interactDistance or 2.0,
             function()
                 -- On-model screen (client/screen.lua) when enabled + ready; otherwise fall back to the NUI overlay.
                 if PPScreen and PPScreen.open(locker.id, locker.label, obj) then return end

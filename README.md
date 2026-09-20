@@ -453,6 +453,27 @@ replacements, per `parcelDeliveries`) go to couriers too - see "Parcels from oth
 Server-side checks cover the job, duty, distance to the desk, vehicle and door, vehicle capacity,
 box size and level, so none of it trusts the client.
 
+## Languages
+
+Every message the script shows (notifications, phone notifications, toasts, error messages, target
+labels, key-bind descriptions, the phone app, the depot window and the locker screen) lives in
+`locales/en.lua`, so the resource can be translated without touching any code.
+
+- **Switch language:** set `Config.locale = 'en'` in `config.lua` to the code of a file in `locales/`.
+- **Add a language:** copy `locales/en.lua` to `locales/de.lua` (any code), change `Locales['en']` at
+  the top to `Locales['de']`, translate the values only (keep the keys and the `%s` / `%d`
+  placeholders, in the same order), then set `Config.locale = 'de'`. The new file is picked up
+  automatically (`locales/*.lua` is already in `fxmanifest.lua`).
+- **Missing keys** fall back to English, so a partial translation is fine.
+- The phone app, depot window and locker screen get their text from the same file. If the language
+  dictionary can't be fetched, the page keeps its English markup text and retries a few times.
+
+**Not in the locale files** (this is owner-editable text in `config.lua` - edit it there and it is
+shown as written, in every language): the catalog product names, category names, locker labels,
+courier vehicle labels, the sender names given to `createParcel`, the app name/description, and the
+depot blip label if you set one. Order status names such as `processing` / `ready` are internal
+identifiers and are not translated - only the text shown for them is.
+
 ## Custom UI
 
 The courier depot window, notifications, progress bars, run list and "take which parcel" picker
@@ -466,12 +487,22 @@ appear in the top right of the screen. The window header uses `ui/logo.png`.
 The courier UI lives on the resource's root NUI page (not the copy sd-phone embeds for the phone
 app). FiveM loads that page inside an iframe, so don't add a `window.top` check to `courier.js`.
 
-### Related resources
-All optional. Postal Prime runs without them.
-- [as-passport](https://github.com/ACE090812/as-passport): passports and replacement IDs, delivered to a locker.
-- [as-birthcert](https://github.com/ACE090812/as-birthcert): birth certificates, ordered on the government site and delivered to a locker.
-- [as-drivingschool](https://github.com/ACE090812/as-drivingschool): driving school and replacement licences.
-- [as-browser](https://github.com/ACE090812/as-browser): in-game phone browser with the government site that as-passport and as-birthcert order through.
+## Not included
+
+- Multiple concurrent orders per player.
+- Society / business funding for courier pay.
+- A job-centre entry or admin tool for giving out the courier job or editing courier XP.
+- Translations shipped with the resource. Only English (`locales/en.lua`) is included, but the language system is in place - see Languages.
+
+## Known courier limitations
+
+- The depot coordinates and the parcel carry offsets on the `asparcel_*` models are unverified
+  guesses - tune them in game (`/ppcoords`, `Config.courier.carry`).
+- If a courier goes AFK, an order can take up to `claimSeconds` (10 minutes by default) to fall
+  back to the NPC courier.
+- The order board refreshes every few seconds while the window is open, not instantly.
+- Clocking on is this script's own duty flag. It isn't tied to your framework's on/off duty, so
+  the framework paycheck (job grade payment) is separate from delivery pay.
 
 Everything above is config-driven on purpose - catalog, prices, lockers, prep/expiry timing - so
 none of it needs a code change to tune once it's running.

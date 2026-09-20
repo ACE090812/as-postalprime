@@ -26,7 +26,7 @@ local Carry   = {} -- [cid] = { orderId, stage = 'pile' | 'door' }
 local function notify(src, desc, kind)
     if not src then return end
     TriggerClientEvent('as-postalprime:toast', src, {
-        title = 'Postal Prime Courier', description = desc, type = kind or 'inform',
+        title = T('courier.name'), description = desc, type = kind or 'inform',
     })
 end
 
@@ -83,11 +83,11 @@ end
 
 -- Resolves the calling player. Returns cid, or nil + an error string.
 local function ctx(src, needDuty)
-    if not enabled() then return nil, 'The courier job is turned off' end
+    if not enabled() then return nil, T('courier.err.off') end
     local cid = PP.track(src)
-    if not cid then return nil, 'Not available' end
-    if not isCourierJob(src) then return nil, 'You don\'t work for Postal Prime' end
-    if needDuty and Duty[cid] ~= src then return nil, 'Clock on at the depot first' end
+    if not cid then return nil, T('err.unavailable') end
+    if not isCourierJob(src) then return nil, T('courier.err.notEmployed') end
+    if needDuty and Duty[cid] ~= src then return nil, T('courier.err.clockOnFirst') end
     return cid
 end
 
@@ -245,7 +245,7 @@ local function endRental(cid, refund, message, kind)
 end
 
 local function forfeit(cid, message)
-    releaseClaims(cid, 'Your rental vehicle is gone - the parcels were passed back to the NPC courier.')
+    releaseClaims(cid, T('courier.toast.rentalGone'))
     endRental(cid, false, message, 'error')
 end
 
@@ -275,7 +275,7 @@ local function buildState(src, cid)
         PPStore.savePlayer(cid)
         if dep > 0 then
             PP.pay(src, dep)
-            notify(src, ('The depot closed your old vehicle rental - $%d deposit refunded.'):format(dep), 'success')
+            notify(src, T('courier.toast.rentalClosed', dep), 'success')
         end
     end
 
@@ -338,20 +338,20 @@ lib.callback.register('as-postalprime:courier:duty', function(source, on)
     local cid, err = ctx(source)
     if not cid then return { ok = false, error = err } end
     if not nearPoint(source, cfg().depot.desk, 15.0) then
-        return { ok = false, error = 'You need to be at the depot desk' }
+        return { ok = false, error = T('courier.err.atDesk') }
     end
 
     if on then
         Duty[cid] = source
-        notify(source, 'You\'re clocked on. Rent a vehicle, then pick orders from the board.', 'success')
+        notify(source, T('courier.toast.clockedOn'), 'success')
     else
         if Rentals[cid] then
-            return { ok = false, error = 'Return your company vehicle before you clock off' }
+            return { ok = false, error = T('courier.err.clockOffVehicle') }
         end
         releaseClaims(cid, nil)
         Carry[cid] = nil
         Duty[cid] = nil
-        notify(source, 'You\'re clocked off.', 'inform')
+        notify(source, T('courier.toast.clockedOff'), 'inform')
     end
     return { ok = true }
 end)
@@ -362,21 +362,21 @@ lib.callback.register('as-postalprime:courier:rent', function(source, key)
     local cid, err = ctx(source, true)
     if not cid then return { ok = false, error = err } end
     if not nearPoint(source, cfg().depot.desk, 15.0) then
-        return { ok = false, error = 'You need to be at the depot desk' }
+        return { ok = false, error = T('courier.err.atDesk') }
     end
-    if Rentals[cid] then return { ok = false, error = 'You already have a company vehicle' } end
+    if Rentals[cid] then return { ok = false, error = T('courier.err.haveVehicle') } end
 
     local def = vehicleDef(key)
-    if not def then return { ok = false, error = 'Unknown vehicle' } end
+    if not def then return { ok = false, error = T('courier.err.unknownVehicle') } end
 
     local pd = PPStore.getPlayer(cid)
     local level = levelFor(cData(pd).xp)
     if level < def.level then
-        return { ok = false, error = ('You need courier level %d for the %s'):format(def.level, def.label) }
+        return { ok = false, error = T('courier.err.needLevel', def.level, def.label) }
     end
 
     if not PP.charge(source, def.deposit) then
-        return { ok = false, error = ('Not enough cash for the $%d deposit'):format(def.deposit) }
+        return { ok = false, error = T('courier.err.noCashDeposit', def.deposit) }
     end
 
     local plate = ('PP%05d'):format(math.random(0, 99999))
@@ -392,9 +392,9 @@ lib.callback.register('as-postalprime:courier:registerVehicle', function(source,
     local cid, err = ctx(source, true)
     if not cid then return { ok = false, error = err } end
     local r = Rentals[cid]
-    if not r or not r.pending then return { ok = false, error = 'No pending rental' } end
+    if not r or not r.pending then return { ok = false, error = T('courier.err.noPendingRental') } end
     netId = tonumber(netId)
-    if not netId then return { ok = false, error = 'Bad vehicle' } end
+    if not netId then return { ok = false, error = T('courier.err.badVehicle') } end
 
     -- The entity can take a moment to exist server-side after the client creates it.
     local ent = 0
@@ -404,11 +404,11 @@ lib.callback.register('as-postalprime:courier:registerVehicle', function(source,
         ent = 0
         Wait(200)
     end
-    if ent == 0 then return { ok = false, error = 'Vehicle didn\'t spawn' } end
-    if GetEntityModel(ent) ~= joaat(r.def.model) then return { ok = false, error = 'Wrong vehicle' } end
+    if ent == 0 then return { ok = false, error = T('courier.err.noSpawn') } end
+    if GetEntityModel(ent) ~= joaat(r.def.model) then return { ok = false, error = T('courier.err.wrongVehicle') } end
     local ped = GetPlayerPed(source)
     if not ped or ped == 0 or #(GetEntityCoords(ped) - GetEntityCoords(ent)) > 80.0 then
-        return { ok = false, error = 'Vehicle is too far away' }
+        return { ok = false, error = T('courier.err.vehicleFar') }
     end
 
     r.entity, r.netId, r.pending = ent, netId, false
@@ -416,8 +416,8 @@ lib.callback.register('as-postalprime:courier:registerVehicle', function(source,
 
     if not giveKey(source, r) then
         -- Couldn't hand over the key (inventory full?) - undo the rental cleanly.
-        endRental(cid, true, 'Couldn\'t give you the vehicle key (inventory full?) - deposit refunded.', 'error')
-        return { ok = false, error = 'Couldn\'t give you the key - is your inventory full?' }
+        endRental(cid, true, T('courier.toast.keyFailed'), 'error')
+        return { ok = false, error = T('courier.err.noKey') }
     end
     return { ok = true, plate = r.plate }
 end)
@@ -427,7 +427,7 @@ lib.callback.register('as-postalprime:courier:cancelRent', function(source)
     local cid = PP.track(source)
     local r = cid and Rentals[cid]
     if not r or not r.pending then return { ok = false } end
-    endRental(cid, true, 'Rental cancelled - deposit refunded.', 'inform')
+    endRental(cid, true, T('courier.toast.rentCancelled'), 'inform')
     return { ok = true }
 end)
 
@@ -443,17 +443,17 @@ end
 lib.callback.register('as-postalprime:courier:return', function(source)
     local cid = PP.track(source)
     local r = cid and Rentals[cid]
-    if not r or r.pending then return { ok = false, error = 'You don\'t have a company vehicle out' } end
+    if not r or r.pending then return { ok = false, error = T('courier.err.noVehicleOut') } end
 
     local dep = cfg().depot
     if not r.entity or not DoesEntityExist(r.entity) then
-        return { ok = false, error = 'Your vehicle can\'t be found' }
+        return { ok = false, error = T('courier.err.vehicleMissing') }
     end
     if #(GetEntityCoords(r.entity) - dep.returnPoint) > (dep.returnRadius or 40.0) then
-        return { ok = false, error = 'Bring the vehicle back to the depot first' }
+        return { ok = false, error = T('courier.err.bringBack') }
     end
     if not nearPoint(source, dep.desk, 60.0) then
-        return { ok = false, error = 'You need to be at the depot' }
+        return { ok = false, error = T('courier.err.atDepot') }
     end
 
     local had = #claimsOf(cid)
@@ -468,12 +468,12 @@ lib.callback.register('as-postalprime:courier:return', function(source)
     end
     local back = deposit - deduct
     if deduct > 0 then
-        endRental(cid, back, ('Vehicle returned with %d%% damage - $%d taken from your deposit, $%d refunded.'):format(dmg, deduct, back), 'inform')
+        endRental(cid, back, T('courier.toast.returnedDamaged', dmg, deduct, back), 'inform')
     else
-        endRental(cid, back, ('Vehicle returned - $%d deposit refunded.'):format(back), 'success')
+        endRental(cid, back, T('courier.toast.returned', back), 'success')
     end
     if had > 0 then
-        notify(source, 'The parcels still on your run were handed to the NPC courier.', 'inform')
+        notify(source, T('courier.toast.parcelsToNpc'), 'inform')
     end
     return { ok = true }
 end)
@@ -485,7 +485,7 @@ AddEventHandler('as-postalprime:courier:vehicleLost', function()
     local cid = PP.track(src)
     local r = cid and Rentals[cid]
     if not r or r.pending or r.src ~= src then return end
-    forfeit(cid, 'Your company vehicle was destroyed - the deposit is forfeited.')
+    forfeit(cid, T('courier.toast.vehicleDestroyed'))
 end)
 
 -- ─── board / claiming ────────────────────────────────────────────────────────
@@ -493,12 +493,12 @@ end)
 -- Why this courier can't take an order right now (nil = they can).
 local function claimBlocker(cid, order)
     local r = Rentals[cid]
-    if not r or r.pending then return 'Rent a company vehicle first' end
+    if not r or r.pending then return T('courier.block.rentFirst') end
     local level = levelFor(cData(PPStore.getPlayer(cid)).xp)
     local size = sizeOf(order)
-    if (SIZE_RANK[size] or 1) > (SIZE_RANK[r.def.maxBox] or 1) then return 'Too big for your vehicle' end
-    if usedUnits(cid) + unitsOf(size) > r.def.capacity then return 'Not enough room in your vehicle' end
-    if #claimsOf(cid) >= batchFor(level) then return ('You can hold %d parcels at your level'):format(batchFor(level)) end
+    if (SIZE_RANK[size] or 1) > (SIZE_RANK[r.def.maxBox] or 1) then return T('courier.block.tooBig') end
+    if usedUnits(cid) + unitsOf(size) > r.def.capacity then return T('courier.block.noRoom') end
+    if #claimsOf(cid) >= batchFor(level) then return T('courier.block.batch', batchFor(level)) end
     return nil
 end
 
@@ -529,15 +529,15 @@ lib.callback.register('as-postalprime:courier:claim', function(source, orderId)
     local cid, err = ctx(source, true)
     if not cid then return { ok = false, error = err } end
     if not nearPoint(source, cfg().depot.desk, 15.0) then
-        return { ok = false, error = 'You need to be at the depot desk' }
+        return { ok = false, error = T('courier.err.atDesk') }
     end
 
     local ownerCid, _, o = findOrder(orderId)
     if not o or not o.courier or o.courier.state ~= 'board' then
-        return { ok = false, error = 'That order is no longer available' }
+        return { ok = false, error = T('courier.err.noLongerAvailable') }
     end
     if ownerCid == cid and cfg().allowOwnOrders ~= true then
-        return { ok = false, error = 'You can\'t deliver your own order' }
+        return { ok = false, error = T('courier.err.ownOrder') }
     end
     local blocker = claimBlocker(cid, o)
     if blocker then return { ok = false, error = blocker } end
@@ -550,7 +550,7 @@ lib.callback.register('as-postalprime:courier:claim', function(source, orderId)
     local osrc = PP.source(ownerCid)
     if osrc then
         TriggerClientEvent('as-postalprime:client:updated', osrc)
-        PP.notify(osrc, 'A courier has your order', 'A Postal Prime courier is collecting your order from the depot.')
+        PP.notify(osrc, T('courier.notif.claimed.title'), T('courier.notif.claimed.body'))
     end
     return { ok = true }
 end)
@@ -562,10 +562,10 @@ lib.callback.register('as-postalprime:courier:unclaim', function(source, orderId
     local ownerCid, _, o = findOrder(orderId)
     local c = o and o.courier
     if not c or c.cid ~= cid or c.state ~= 'claimed' then
-        return { ok = false, error = 'You can only put back parcels you haven\'t loaded yet' }
+        return { ok = false, error = T('courier.err.putBackLoaded') }
     end
     if Carry[cid] and Carry[cid].orderId == orderId then
-        return { ok = false, error = 'Put the parcel down first' }
+        return { ok = false, error = T('courier.err.putDownFirst') }
     end
     c.state, c.cid, c.claimedAt = 'board', nil, nil
     PPStore.savePlayer(ownerCid)
@@ -580,7 +580,7 @@ lib.callback.register('as-postalprime:courier:abandon', function(source)
     releaseClaims(cid, nil)
     Carry[cid] = nil
     TriggerClientEvent('as-postalprime:courier:carryClear', source)
-    if n > 0 then notify(source, 'Run abandoned - the NPC courier will deliver those parcels.', 'inform') end
+    if n > 0 then notify(source, T('courier.toast.runAbandoned'), 'inform') end
     return { ok = true }
 end)
 
@@ -590,9 +590,9 @@ lib.callback.register('as-postalprime:courier:pickPile', function(source)
     local cid, err = ctx(source, true)
     if not cid then return { ok = false, error = err } end
     if not nearPoint(source, cfg().depot.pile, 15.0) then
-        return { ok = false, error = 'You need to be at the parcel pile' }
+        return { ok = false, error = T('courier.err.atPile') }
     end
-    if Carry[cid] then return { ok = false, error = 'You\'re already carrying a parcel' } end
+    if Carry[cid] then return { ok = false, error = T('courier.err.alreadyCarrying') } end
 
     for _, c in ipairs(claimsOf(cid)) do
         if c.order.courier.state == 'claimed' then
@@ -600,7 +600,7 @@ lib.callback.register('as-postalprime:courier:pickPile', function(source)
             return { ok = true, orderId = c.order.id, size = sizeOf(c.order), label = destOf(c.order).label }
         end
     end
-    return { ok = false, error = 'You have no parcels left to collect - claim more from the board' }
+    return { ok = false, error = T('courier.err.noParcelsLeft') }
 end)
 
 local function nearRentalVehicle(src, cid)
@@ -616,15 +616,15 @@ lib.callback.register('as-postalprime:courier:load', function(source, orderId)
     if not cid then return { ok = false, error = err } end
     local carry = Carry[cid]
     if not carry or carry.stage ~= 'pile' or carry.orderId ~= orderId then
-        return { ok = false, error = 'You\'re not carrying that parcel' }
+        return { ok = false, error = T('courier.err.notCarrying') }
     end
-    if not nearRentalVehicle(source, cid) then return { ok = false, error = 'Get closer to your vehicle' } end
+    if not nearRentalVehicle(source, cid) then return { ok = false, error = T('courier.err.closerVehicle') } end
 
     local ownerCid, _, o = findOrder(orderId)
     local c = o and o.courier
     if not c or c.cid ~= cid or c.state ~= 'claimed' then
         Carry[cid] = nil
-        return { ok = false, error = 'That order is no longer yours' }
+        return { ok = false, error = T('courier.err.notYours') }
     end
 
     c.state = 'loaded'
@@ -636,9 +636,9 @@ lib.callback.register('as-postalprime:courier:load', function(source, orderId)
     local osrc = PP.source(ownerCid)
     if osrc then
         TriggerClientEvent('as-postalprime:client:updated', osrc)
-        PP.notify(osrc, 'Out for delivery', destOf(o).kind == 'locker'
-            and 'Your Postal Prime courier is on the way to the locker.'
-            or 'Your Postal Prime courier is on the way to your door.')
+        PP.notify(osrc, T('courier.notif.out.title'), destOf(o).kind == 'locker'
+            and T('courier.notif.out.locker')
+            or T('courier.notif.out.home'))
     end
     return { ok = true }
 end)
@@ -647,12 +647,12 @@ end)
 lib.callback.register('as-postalprime:courier:takeFromVehicle', function(source, orderId)
     local cid, err = ctx(source, true)
     if not cid then return { ok = false, error = err } end
-    if Carry[cid] and Carry[cid].stage == 'pile' then return { ok = false, error = 'Load the parcel you\'re carrying first' } end
-    if not nearRentalVehicle(source, cid) then return { ok = false, error = 'Get closer to your vehicle' } end
+    if Carry[cid] and Carry[cid].stage == 'pile' then return { ok = false, error = T('courier.err.loadFirst') } end
+    if not nearRentalVehicle(source, cid) then return { ok = false, error = T('courier.err.closerVehicle') } end
 
     local _, _, o = findOrder(orderId)
     local c = o and o.courier
-    if not c or c.cid ~= cid or c.state ~= 'loaded' then return { ok = false, error = 'That parcel isn\'t loaded' } end
+    if not c or c.cid ~= cid or c.state ~= 'loaded' then return { ok = false, error = T('courier.err.notLoaded') } end
 
     Carry[cid] = { orderId = orderId, stage = 'door' }
     local dest = destOf(o)
@@ -672,17 +672,17 @@ lib.callback.register('as-postalprime:courier:deliver', function(source, orderId
     if not cid then return { ok = false, error = err } end
     local carry = Carry[cid]
     if not carry or carry.stage ~= 'door' or carry.orderId ~= orderId then
-        return { ok = false, error = 'You\'re not carrying that parcel' }
+        return { ok = false, error = T('courier.err.notCarrying') }
     end
 
     local ownerCid, _, o = findOrder(orderId)
     local c = o and o.courier
     if not c or c.cid ~= cid or c.state ~= 'loaded' then
         Carry[cid] = nil
-        return { ok = false, error = 'That order is no longer yours' }
+        return { ok = false, error = T('courier.err.notYours') }
     end
     if not nearPoint(source, doorPoint(o), cfg().deliverDistance or 12.0) then
-        return { ok = false, error = destOf(o).kind == 'locker' and 'You\'re too far from the locker' or 'You\'re too far from the door' }
+        return { ok = false, error = destOf(o).kind == 'locker' and T('courier.err.farLocker') or T('courier.err.farDoor') }
     end
 
     local pd = PPStore.getPlayer(cid)
@@ -725,7 +725,7 @@ local function sweep()
             Duty[cid] = nil
             releaseClaims(cid, nil)
             Carry[cid] = nil
-            notify(src, 'You\'re no longer a Postal Prime courier.', 'error')
+            notify(src, T('courier.toast.noLongerCourier'), 'error')
             refreshClient(src)
         end
     end
@@ -733,11 +733,11 @@ local function sweep()
     -- Rentals: unregistered ones time out; vehicles that vanished or got left behind forfeit.
     for cid, r in pairs(Rentals) do
         if r.pending then
-            if now > r.expires then endRental(cid, true, 'Rental timed out - deposit refunded.', 'inform') end
+            if now > r.expires then endRental(cid, true, T('courier.toast.rentalTimedOut'), 'inform') end
         else
             if not r.entity or not DoesEntityExist(r.entity) then
                 r.missing = (r.missing or 0) + 1
-                if r.missing >= 3 then forfeit(cid, 'Your company vehicle was lost - the deposit is forfeited.') end
+                if r.missing >= 3 then forfeit(cid, T('courier.toast.vehicleLost')) end
             else
                 r.missing = 0
                 local src = r.src
@@ -746,7 +746,7 @@ local function sweep()
                     if #(GetEntityCoords(ped) - GetEntityCoords(r.entity)) > (cfg().abandonDistance or 500.0) then
                         r.farSince = r.farSince or now
                         if now - r.farSince > (cfg().abandonSeconds or 300) then
-                            forfeit(cid, 'You abandoned your company vehicle - the deposit is forfeited.')
+                            forfeit(cid, T('courier.toast.vehicleAbandoned'))
                         end
                     else
                         r.farSince = nil
@@ -770,11 +770,11 @@ local function sweep()
                 end
             else
                 if not c.cid or not Duty[c.cid] or not Rentals[c.cid] then
-                    toNpc(ownerCid, o, 'That run was cancelled - the parcel went back to the NPC courier.')
+                    toNpc(ownerCid, o, T('courier.toast.runCancelled'))
                 elseif c.state == 'claimed' and now - (c.claimedAt or now) > (cfg().holdSeconds or 900) then
-                    toNpc(ownerCid, o, 'You took too long to load a parcel - it went back to the NPC courier.')
+                    toNpc(ownerCid, o, T('courier.toast.tooSlowLoad'))
                 elseif c.state == 'loaded' and c.deadline and now > c.deadline + (cfg().overdueSeconds or 600) then
-                    toNpc(ownerCid, o, 'You were far too late - the parcel went to the NPC courier instead.')
+                    toNpc(ownerCid, o, T('courier.toast.tooLate'))
                 end
             end
         end
@@ -819,11 +819,11 @@ function PPCourier.tryBoard(cid, order)
     local src = PP.source(cid)
     if src then
         TriggerClientEvent('as-postalprime:client:updated', src)
-        PP.notify(src, 'Waiting for a courier',
-            ((order.parcel and 'Your parcel is ready. A Postal Prime courier will bring it to %s.' or 'Your order is ready. A Postal Prime courier will bring it to %s.'):format(dest.label)))
+        PP.notify(src, T('courier.notif.waiting.title'),
+            (order.parcel and T('courier.notif.waiting.parcel', dest.label) or T('courier.notif.waiting.order', dest.label)))
     end
     for _, csrc in pairs(Duty) do
-        notify(csrc, 'A new order is on the depot board.', 'inform')
+        notify(csrc, T('courier.toast.newOrder'), 'inform')
         refreshClient(csrc)
     end
     return true
@@ -851,12 +851,12 @@ AddEventHandler('onResourceStop', function(name)
     for cid in pairs(Rentals) do
         local r = Rentals[cid]
         -- Stopping the resource isn't the courier's fault: give the deposit back.
-        if r then endRental(cid, true, 'Postal Prime restarted - your vehicle rental was closed and the deposit refunded.', 'inform') end
+        if r then endRental(cid, true, T('courier.toast.restarted'), 'inform') end
     end
 end)
 
 -- Admin helper for placing the depot points: /ppcoords prints + copies your exact vector4.
-lib.addCommand('ppcoords', { help = 'Print your coordinates for Config.courier', restricted = 'group.admin' }, function(source)
+lib.addCommand('ppcoords', { help = T('cmd.ppcoords'), restricted = 'group.admin' }, function(source)
     TriggerClientEvent('as-postalprime:courier:printCoords', source)
 end)
 

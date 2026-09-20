@@ -43,7 +43,7 @@ local function spawnBox(orderId, p)
 
     PPTarget.addEntity(
         obj, 'as-postalprime:homeparcel_' .. orderId,
-        'fa-solid fa-box', 'Take Parcel', cfg().takeDistance or 2.5,
+        'fa-solid fa-box', T('target.takeParcel'), cfg().takeDistance or 2.5,
         function() TriggerServerEvent('as-postalprime:takeHomeParcel', orderId) end
     )
 end

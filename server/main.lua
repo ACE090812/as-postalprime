@@ -292,9 +292,9 @@ end)
 -- never charges/reserves anything.
 lib.callback.register('as-postalprime:toggleWishlist', function(source, data)
     local cid = track(source)
-    if not cid then return { ok = false, error = 'Not available' } end
-    if type(data) ~= 'table' or not data.itemId then return { ok = false, error = 'Bad request' } end
-    if not findCatalogItem(data.itemId) then return { ok = false, error = 'Unknown item' } end
+    if not cid then return { ok = false, error = T('err.unavailable') } end
+    if type(data) ~= 'table' or not data.itemId then return { ok = false, error = T('err.badRequest') } end
+    if not findCatalogItem(data.itemId) then return { ok = false, error = T('err.unknownItem') } end
 
     local pd = PPStore.getPlayer(cid)
     pd.wishlist = pd.wishlist or {}
@@ -345,10 +345,10 @@ PP.pay = refundPlayer
 
 lib.callback.register('as-postalprime:checkout', function(source, data)
     local cid = track(source)
-    if not cid then return { ok = false, error = 'Not available' } end
+    if not cid then return { ok = false, error = T('err.unavailable') } end
     local isHome = type(data) == 'table' and data.delivery == 'home'
     if type(data) ~= 'table' or type(data.items) ~= 'table' or (not isHome and not data.lockerId) then
-        return { ok = false, error = 'Bad request' }
+        return { ok = false, error = T('err.badRequest') }
     end
 
     -- Home delivery: the property is re-resolved server-side from what THIS character owns/rents/has
@@ -356,17 +356,17 @@ lib.callback.register('as-postalprime:checkout', function(source, data)
     local property = nil
     if isHome then
         if not (Config.home and Config.home.enabled) or not PPHousing.available() then
-            return { ok = false, error = 'Home delivery isn\'t available right now' }
+            return { ok = false, error = T('err.homeUnavailable') }
         end
         if type(data.giftTo) == 'string' and data.giftTo:gsub('%s+', '') ~= '' then
-            return { ok = false, error = 'Gift orders can only go to a locker' }
+            return { ok = false, error = T('err.giftLockerOnly') }
         end
         if type(data.propertyKey) ~= 'string' then
-            return { ok = false, error = 'Pick a property to deliver to' }
+            return { ok = false, error = T('err.pickProperty') }
         end
         property = PPHousing.resolve(cid, data.propertyKey)
         if not property then
-            return { ok = false, error = 'You don\'t have access to that property' }
+            return { ok = false, error = T('err.noPropertyAccess') }
         end
     end
 
@@ -377,10 +377,10 @@ lib.callback.register('as-postalprime:checkout', function(source, data)
     if type(data.giftTo) == 'string' and data.giftTo:gsub('%s+', '') ~= '' then
         giftSrc = findOnlinePlayerByName(data.giftTo, source)
         if not giftSrc then
-            return { ok = false, error = ('Couldn\'t find an online player named "%s"'):format(data.giftTo) }
+            return { ok = false, error = T('err.giftNotFound', data.giftTo) }
         end
         giftCid = track(giftSrc)
-        if not giftCid then return { ok = false, error = 'That player isn\'t available right now' } end
+        if not giftCid then return { ok = false, error = T('err.giftUnavailable') } end
         giftName = PPBridge.getCharacterName(giftSrc)
     end
 
@@ -390,14 +390,14 @@ lib.callback.register('as-postalprime:checkout', function(source, data)
 
     if recipientPd.active then
         return { ok = false, error = giftCid
-            and (giftName .. ' already has an order on the way - they need to collect or wait for it to expire first.')
-            or 'You already have an order on the way. Collect or wait for it to expire first.' }
+            and T('err.giftHasOrder', giftName)
+            or T('err.hasOrder') }
     end
 
     local locker = nil
     if not isHome then
         locker = findLocker(data.lockerId)
-        if not locker then return { ok = false, error = 'Pick a valid locker' } end
+        if not locker then return { ok = false, error = T('err.pickLocker') } end
     end
 
     local items, itemsTotal = {}, 0
@@ -405,14 +405,14 @@ lib.callback.register('as-postalprime:checkout', function(source, data)
         qty = tonumber(qty) or 0
         if qty > 0 then
             local entry = findCatalogItem(itemId)
-            if not entry then return { ok = false, error = 'Cart contains an item that no longer exists' } end
+            if not entry then return { ok = false, error = T('err.cartItemGone') } end
             qty = math.floor(qty)
 
             local stock = PPStore.getStock(entry.id)
             if stock ~= nil and stock < qty then
                 return { ok = false, error = stock <= 0
-                    and (entry.label .. ' is out of stock')
-                    or ('Only ' .. stock .. ' left of ' .. entry.label) }
+                    and T('err.outOfStock', entry.label)
+                    or T('err.onlyLeft', stock, entry.label) }
             end
 
             items[#items + 1] = { id = entry.id, label = entry.label, icon = entry.icon, price = entry.price, qty = qty }
@@ -420,7 +420,7 @@ lib.callback.register('as-postalprime:checkout', function(source, data)
         end
     end
 
-    if #items == 0 then return { ok = false, error = 'Your cart is empty' } end
+    if #items == 0 then return { ok = false, error = T('err.cartEmpty') } end
 
     -- Plus (free delivery / faster prep) is the RECIPIENT's benefit on a gift order, same as any
     -- other perk tied to who's actually receiving and collecting it.
@@ -432,7 +432,7 @@ lib.callback.register('as-postalprime:checkout', function(source, data)
     if isHome then prepSeconds = prepSeconds + homeTravelSeconds(property.coords) end
 
     if not chargePlayer(source, total) then
-        return { ok = false, error = 'Not enough cash' }
+        return { ok = false, error = T('err.noCash') }
     end
 
     -- Stock was only checked above, not spent yet - spend it now that payment succeeded. Checked
@@ -440,7 +440,7 @@ lib.callback.register('as-postalprime:checkout', function(source, data)
     for _, it in ipairs(items) do
         if not PPStore.trySpendStock(it.id, it.qty) then
             refundPlayer(source, total)
-            return { ok = false, error = it.label .. ' just sold out - you have not been charged.' }
+            return { ok = false, error = T('err.soldOut', it.label) }
         end
     end
 
@@ -449,7 +449,7 @@ lib.callback.register('as-postalprime:checkout', function(source, data)
         id = newOrderId(),
         items = items,
         lockerId = isHome and ('home:' .. property.key) or locker.id,
-        lockerLabel = isHome and ('Home - ' .. property.label) or locker.label,
+        lockerLabel = isHome and T('order.homeLabel', property.label) or locker.label,
         delivery = isHome and 'home' or 'locker',
         homeProperty = isHome and property or nil,
         itemsTotal = itemsTotal,
@@ -475,8 +475,8 @@ lib.callback.register('as-postalprime:checkout', function(source, data)
     -- clock every few seconds regardless of restarts, so it always catches up.
 
     if giftCid then
-        pushPhoneNotification(giftSrc, 'You got a gift order!',
-            ('Someone sent you an order - it\'ll be ready at %s.'):format(locker.label))
+        pushPhoneNotification(giftSrc, T('notif.gift.title'),
+            T('notif.gift.body', locker.label))
         TriggerClientEvent('as-postalprime:client:updated', giftSrc)
     end
 
@@ -492,16 +492,16 @@ end)
 -- collected or left to expire like before, same as a real courier already being en route.
 lib.callback.register('as-postalprime:cancelOrder', function(source)
     local cid = track(source)
-    if not cid then return { ok = false, error = 'Not available' } end
+    if not cid then return { ok = false, error = T('err.unavailable') } end
 
     local pd = PPStore.getPlayer(cid)
     local order = pd.active
-    if not order then return { ok = false, error = 'You have no active order' } end
+    if not order then return { ok = false, error = T('err.noActiveOrder') } end
     if order.ready then
-        return { ok = false, error = 'This order is already ready for pickup and can no longer be cancelled - collect it or let it expire.' }
+        return { ok = false, error = T('err.alreadyReady') }
     end
     if order.courier and order.courier.state ~= 'board' then
-        return { ok = false, error = 'A courier is already handling this order and it can no longer be cancelled.' }
+        return { ok = false, error = T('err.courierHandling') }
     end
 
     pd.active = nil
@@ -522,7 +522,7 @@ lib.callback.register('as-postalprime:cancelOrder', function(source)
 
     TriggerClientEvent('as-postalprime:client:updated', source)
     TriggerClientEvent('as-postalprime:toast', source, {
-        title = 'Postal Prime', description = 'Order cancelled and refunded.', type = 'success',
+        title = T('app.name'), description = T('toast.orderCancelled'), type = 'success',
     })
 
     return { ok = true, orders = orderList(pd, cid) }
@@ -530,13 +530,13 @@ end)
 
 lib.callback.register('as-postalprime:subscribePlus', function(source)
     local cid = track(source)
-    if not cid then return { ok = false, error = 'Not available' } end
+    if not cid then return { ok = false, error = T('err.unavailable') } end
 
     local pd = PPStore.getPlayer(cid)
     local price = Config.plus.price or 0
 
     if not chargePlayer(source, price) then
-        return { ok = false, error = 'Not enough cash' }
+        return { ok = false, error = T('err.noCash') }
     end
 
     local now = os.time()
@@ -657,12 +657,12 @@ end
 
 lib.callback.register('as-postalprime:collect', function(source, data)
     local cid = track(source)
-    if not cid then return { ok = false, error = 'Not available' } end
-    if type(data) ~= 'table' then return { ok = false, error = 'Bad request' } end
+    if not cid then return { ok = false, error = T('err.unavailable') } end
+    if type(data) ~= 'table' then return { ok = false, error = T('err.badRequest') } end
 
     local pd = PPStore.getPlayer(cid)
     local list = eachOrder(pd)
-    if #list == 0 then return { ok = false, error = 'You have no order waiting' } end
+    if #list == 0 then return { ok = false, error = T('err.noOrderWaiting') } end
 
     -- The player can have a shop order and parcels waiting at once: pick the one that is ready for a
     -- locker, is at THIS locker and matches the code.
@@ -673,14 +673,14 @@ lib.callback.register('as-postalprime:collect', function(source, data)
         end
     end
     if #ready == 0 then
-        if homeReady then return { ok = false, error = 'This order is being delivered to your home - look for the parcel at your front door' } end
-        return { ok = false, error = 'Your order is still being prepared' }
+        if homeReady then return { ok = false, error = T('err.homeDelivered') } end
+        return { ok = false, error = T('err.stillPreparing') }
     end
     local here = {}
     for _, o in ipairs(ready) do
         if o.lockerId == data.lockerId then here[#here + 1] = o end
     end
-    if #here == 0 then return { ok = false, error = 'That locker doesn\'t have your order - check the app for the right one' } end
+    if #here == 0 then return { ok = false, error = T('err.wrongLocker') } end
 
     local entered = tostring(data.code or ''):gsub('%D', '')
     local order
@@ -689,10 +689,10 @@ lib.callback.register('as-postalprime:collect', function(source, data)
             if entered == o.code then order = o break end
         end
     end
-    if not order then return { ok = false, error = 'Wrong code' } end
+    if not order then return { ok = false, error = T('err.wrongCode') } end
 
     if OpenDoors[data.lockerId] then
-        return { ok = false, error = "Another locker door here is already open - wait a moment" }
+        return { ok = false, error = T('err.doorOpen') }
     end
 
     if not order.doorSlot then
@@ -751,17 +751,17 @@ AddEventHandler('as-postalprime:takeBox', function(lockerId, doorSlot)
     TriggerClientEvent('as-postalprime:client:updated', source)
     if not hasReadyLockerOrder(pd) then TriggerClientEvent('as-postalprime:client:orderReady:clear', source) end
     TriggerClientEvent('as-postalprime:toast', source, {
-        title = 'Postal Prime', description = 'Order collected!', type = 'success',
+        title = T('app.name'), description = T('toast.orderCollected'), type = 'success',
     })
-    pushPhoneNotification(source, 'Parcel picked up',
-        ('Your order from %s was collected. Thanks for shopping with Postal Prime!'):format(order.lockerLabel))
+    pushPhoneNotification(source, T('notif.collected.title'),
+        T('notif.collected.body', order.lockerLabel))
 end)
 
 lib.callback.register('as-postalprime:getReviews', function(source, data)
     local cid = track(source)
-    if type(data) ~= 'table' or not data.itemId then return { ok = false, error = 'Bad request' } end
+    if type(data) ~= 'table' or not data.itemId then return { ok = false, error = T('err.badRequest') } end
     local entry = findCatalogItem(data.itemId)
-    if not entry then return { ok = false, error = 'Unknown item' } end
+    if not entry then return { ok = false, error = T('err.unknownItem') } end
 
     local rating, count = ratingFor(entry.id, entry.baseRating, entry.baseReviews)
     local list, mine = {}, nil
@@ -795,23 +795,23 @@ end)
 
 lib.callback.register('as-postalprime:submitReview', function(source, data)
     local cid = track(source)
-    if not cid then return { ok = false, error = 'Not available' } end
-    if type(data) ~= 'table' or not data.itemId then return { ok = false, error = 'Bad request' } end
+    if not cid then return { ok = false, error = T('err.unavailable') } end
+    if type(data) ~= 'table' or not data.itemId then return { ok = false, error = T('err.badRequest') } end
 
     local entry = findCatalogItem(data.itemId)
-    if not entry then return { ok = false, error = 'Unknown item' } end
+    if not entry then return { ok = false, error = T('err.unknownItem') } end
 
     local pd = PPStore.getPlayer(cid)
     if not hasPurchased(pd, entry.id) then
-        return { ok = false, error = 'You can only review something you\'ve collected from a locker' }
+        return { ok = false, error = T('err.reviewNeedsPurchase') }
     end
 
     local rating = tonumber(data.rating) or 5
     rating = math.max(1, math.min(5, math.floor(rating)))
     local title = tostring(data.title or ''):sub(1, 80)
     local body = tostring(data.body or ''):sub(1, 500)
-    if title == '' then title = 'No title' end
-    if body == '' then body = '(no written comment)' end
+    if title == '' then title = T('review.noTitle') end
+    if body == '' then body = T('review.noBody') end
 
     PPStore.reviews[entry.id] = PPStore.reviews[entry.id] or {}
     PPStore.reviews[entry.id][cid] = {
@@ -877,9 +877,9 @@ function PP.dropHome(cid, order, byName)
     local src = onlineSources[cid]
     if src then
         TriggerClientEvent('as-postalprime:client:updated', src)
-        pushPhoneNotification(src, 'Your parcel has arrived',
-            byName and ('%s delivered your order to %s.'):format(byName, order.homeProperty.label)
-                or ('Your Postal Prime courier is dropping your order at %s.'):format(order.homeProperty.label))
+        pushPhoneNotification(src, T('notif.arrived.title'),
+            byName and T('notif.arrived.byCourier', byName, order.homeProperty.label)
+                or T('notif.arrived.byVan', order.homeProperty.label))
         TriggerClientEvent('as-postalprime:client:orderReady', src, order.homeProperty.coords, order.homeProperty.label)
     end
 end
@@ -898,9 +898,9 @@ function PP.readyLocker(cid, order, byName)
     local src = onlineSources[cid]
     if src then
         TriggerClientEvent('as-postalprime:client:updated', src)
-        pushPhoneNotification(src, 'Order ready for pickup',
-            byName and ('%s delivered your order to %s. Open the app for your pickup code.'):format(byName, order.lockerLabel)
-                or ('Your order is ready at %s. Open the app for your pickup code.'):format(order.lockerLabel))
+        pushPhoneNotification(src, T('notif.ready.title'),
+            byName and T('notif.ready.byCourier', byName, order.lockerLabel)
+                or T('notif.ready.default', order.lockerLabel))
         local locker = findLocker(order.lockerId)
         if locker then
             TriggerClientEvent('as-postalprime:client:orderReady', src,
@@ -951,7 +951,7 @@ AddEventHandler('as-postalprime:takeHomeParcel', function(orderId)
     TriggerClientEvent('as-postalprime:client:homeRemove', -1, order.id)
 
     TriggerClientEvent('as-postalprime:toast', source, {
-        title = 'Postal Prime', description = 'Parcel collected!', type = 'success',
+        title = T('app.name'), description = T('toast.parcelCollected'), type = 'success',
     })
 
     local ownerSrc = onlineSources[ownerCid]
@@ -959,11 +959,11 @@ AddEventHandler('as-postalprime:takeHomeParcel', function(orderId)
         TriggerClientEvent('as-postalprime:client:updated', ownerSrc)
         TriggerClientEvent('as-postalprime:client:orderReady:clear', ownerSrc)
         if takerCid == ownerCid then
-            pushPhoneNotification(ownerSrc, 'Parcel picked up',
-                ('Your order at %s was picked up. Thanks for shopping with Postal Prime!'):format(order.homeProperty.label))
+            pushPhoneNotification(ownerSrc, T('notif.collected.title'),
+                T('notif.homePickedUp.body', order.homeProperty.label))
         else
-            pushPhoneNotification(ownerSrc, 'Your parcel was taken',
-                ('Your order at %s was picked up by someone else.'):format(order.homeProperty.label))
+            pushPhoneNotification(ownerSrc, T('notif.homeTaken.title'),
+                T('notif.homeTaken.body', order.homeProperty.label))
         end
     end
 end)
@@ -1078,15 +1078,15 @@ CreateThread(function()
                         if src then
                             TriggerClientEvent('as-postalprime:client:updated', src)
                             if not hasReadyLockerOrder(pd) then TriggerClientEvent('as-postalprime:client:orderReady:clear', src) end
-                            pushPhoneNotification(src, 'Parcel returned',
-                                ('Your uncollected parcel at %s was returned to the sender.'):format(order.lockerLabel))
+                            pushPhoneNotification(src, T('notif.parcelReturned.title'),
+                                T('notif.parcelReturned.body', order.lockerLabel))
                         end
                     elseif src then
                         refundPlayer(src, order.total)
                         TriggerClientEvent('as-postalprime:client:updated', src)
                         if not hasReadyLockerOrder(pd) then TriggerClientEvent('as-postalprime:client:orderReady:clear', src) end
-                        pushPhoneNotification(src, 'Order expired & refunded',
-                            ('Your uncollected order at %s expired and was refunded in full.'):format(order.lockerLabel))
+                        pushPhoneNotification(src, T('notif.expired.title'),
+                            T('notif.expired.body', order.lockerLabel))
                     else
                         -- Player offline when their order expired - refund can't be applied to an
                         -- offline account/inventory for most frameworks. See README "Known limitation".
@@ -1106,8 +1106,8 @@ CreateThread(function()
                     PPStore.savePlayer(cid)
                     local src = onlineSources[cid]
                     if src then
-                        pushPhoneNotification(src, 'Postal Prime Plus expiring soon',
-                            'Your membership expires in less than 24 hours. Renew from the You tab to keep free delivery.')
+                        pushPhoneNotification(src, T('notif.plusExpiring.title'),
+                            T('notif.plusExpiring.body'))
                     end
                 end
             end
