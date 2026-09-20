@@ -109,7 +109,7 @@ one of these two."
 ## Locker wall prop
 
 The actual locker wall model, texture dictionary and door-open/close animations ship in their
-**own resource, `pp_lockerprops`** (started as a dependency, no scripts, just streamed assets and
+**own resource, `as-lockerprops`** (started as a dependency, no scripts, just streamed assets and
 a `data_file 'DLC_ITYP_REQUEST'` registration in its own `fxmanifest.lua`) - keeping the prop
 files out of the app's own code. `as-postalprime` just references the archetype by name
 (`Config.lockerWall.prop`), and spawns one wall at each `Config.lockers` entry's `coords`/
@@ -117,7 +117,7 @@ files out of the app's own code. `as-postalprime` just references the archetype 
 numbered door's parcel sits - used to place the "Take Parcel" point once that door is open, no
 extra prop model needed for the parcel itself.
 
-The `mdx_parcel_s/m/l/xl` box props ship in `pp_lockerprops` too - `Config.lockerBoxOffsets`
+The `as_parcel_s/m/l/xl` box props ship in `as-lockerprops` too - `Config.lockerBoxOffsets`
 gives each door slot both its attach offset and which size spawns there. When a door opens, the
 matching box is attached to the wall at that offset and gets its own "Take Parcel" target point;
 it's deleted the moment it's taken (or the door auto-closes unclaimed).
@@ -212,7 +212,7 @@ people buy it and survives restarts. An item with no `stock` field is unlimited,
 - Checkout re-checks stock right before charging and again right before confirming the order, so
   two players can't both buy the last unit - whoever's charge finishes first gets it, the other is
   refunded automatically and told it just sold out.
-- **Restock from the server console**: `pprestock <itemId> <amount>` (console/RCON only, not a
+- **Restock from the server console**: `asrestock <itemId> <amount>` (console/RCON only, not a
   player-usable in-game command). Works even on an item that currently has no cap yet.
 
 ## Gift orders
