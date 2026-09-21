@@ -30,6 +30,11 @@ end
 
 PP.track = track
 PP.notify = pushPhoneNotification
+-- Orders sent with hidden = true (e.g. from the parts site) never push phone notifications.
+PP.notifyOrder = function(src, order, title, body)
+    if order and order.hidden then return end
+    pushPhoneNotification(src, title, body)
+end
 PP.source = function(cid) return onlineSources[cid] end
 
 AddEventHandler('playerDropped', function()
@@ -220,8 +225,8 @@ end
 -- The app's order list: the shop order, then parcels, then history.
 local function orderList(pd, cid)
     local out = {}
-    for _, o in ipairs(eachOrder(pd)) do out[#out + 1] = sanitizeOrder(o, cid) end
-    for _, o in ipairs(pd.history) do out[#out + 1] = sanitizeOrder(o, cid) end
+    for _, o in ipairs(eachOrder(pd)) do if not o.hidden then out[#out + 1] = sanitizeOrder(o, cid) end end
+    for _, o in ipairs(pd.history) do if not o.hidden then out[#out + 1] = sanitizeOrder(o, cid) end end
     return out
 end
 
@@ -753,7 +758,7 @@ AddEventHandler('as-postalprime:takeBox', function(lockerId, doorSlot)
     TriggerClientEvent('as-postalprime:toast', source, {
         title = T('app.name'), description = T('toast.orderCollected'), type = 'success',
     })
-    pushPhoneNotification(source, T('notif.collected.title'),
+    PP.notifyOrder(source, order, T('notif.collected.title'),
         T('notif.collected.body', order.lockerLabel))
 end)
 
@@ -841,9 +846,10 @@ end
 local function homeParcels()
     local out = {}
     for _, pd in pairs(PPStore.players) do
-        local o = pd.active
-        if o and o.delivery == 'home' and o.ready and not o.collected and not o.expired and o.homeProperty then
-            out[#out + 1] = homeParcelPayload(o)
+        for _, o in ipairs(eachOrder(pd)) do
+            if o.delivery == 'home' and o.ready and not o.collected and not o.expired and o.homeProperty then
+                out[#out + 1] = homeParcelPayload(o)
+            end
         end
     end
     return out
@@ -866,6 +872,12 @@ end)
 function PP.dropHome(cid, order, byName)
     order.ready = true
     order.courier = nil
+    if order.business then
+        -- Business delivery: the box is dropped like a home one, then PP.completeBusiness (5s loop) moves the
+        -- items into the job stash once the drop has had time to play out.
+        local bc = Config.business or {}
+        order.business.at = os.time() + (byName and (tonumber(bc.playerDropSeconds) or 3) or (tonumber(bc.vanDropSeconds) or 25))
+    end
     order.boxSize = order.boxSize or orderBoxSize(order)
     if byName then order.deliveredBy = byName end
     PPStore.savePlayer(cid)
@@ -877,11 +889,77 @@ function PP.dropHome(cid, order, byName)
     local src = onlineSources[cid]
     if src then
         TriggerClientEvent('as-postalprime:client:updated', src)
-        pushPhoneNotification(src, T('notif.arrived.title'),
+        PP.notifyOrder(src, order, T('notif.arrived.title'),
             byName and T('notif.arrived.byCourier', byName, order.homeProperty.label)
                 or T('notif.arrived.byVan', order.homeProperty.label))
-        TriggerClientEvent('as-postalprime:client:orderReady', src, order.homeProperty.coords, order.homeProperty.label)
+        if not order.business then
+            TriggerClientEvent('as-postalprime:client:orderReady', src, order.homeProperty.coords, order.homeProperty.label)
+        end
     end
+end
+
+-- ─── Business delivery ────────────────────────────────────────────────────────
+-- A parcel sent with delivery = 'business' goes through the normal home-delivery machinery (courier board,
+-- NPC van, waypoint at the door) but is not left for anyone to take: when the drop is done the items are put
+-- into the business's ox_inventory stash and the employees are told.
+
+local function stashDeposit(b, items)
+    if GetResourceState('ox_inventory') ~= 'started' then return false, 'no_inventory' end
+    local ox, st = exports.ox_inventory, b.stash or {}
+    if type(st.id) ~= 'string' or st.id == '' then return false, 'no_stash' end
+    if st.register then
+        pcall(function()
+            ox:RegisterStash(st.id, st.label or st.id, tonumber(st.slots) or 50, tonumber(st.weight) or 100000, st.owner or false, st.groups)
+        end)
+    end
+    local added = {}
+    local function rollback()
+        for _, a in ipairs(added) do pcall(function() ox:RemoveItem(st.id, a.name, a.qty, a.metadata) end) end
+    end
+    for _, it in ipairs(items) do
+        local entry = findCatalogItem(it.id)
+        local name = entry and entry.item or it.item or it.id
+        local can, ok = false, false
+        pcall(function() can = ox:CanCarryItem(st.id, name, it.qty, it.metadata) end)
+        if can then pcall(function() ok = ox:AddItem(st.id, name, it.qty, it.metadata) end) end
+        if not ok then rollback() return false, can and 'error' or 'full' end
+        added[#added + 1] = { name = name, qty = it.qty, metadata = it.metadata }
+    end
+    return true
+end
+
+local function toastJob(job, description, kind)
+    for _, id in ipairs(GetPlayers()) do
+        local src = tonumber(id)
+        if src and PPBridge.getJob(src) == job then
+            TriggerClientEvent('as-postalprime:toast', src, { title = T('app.name'), description = description, type = kind or 'success' })
+        end
+    end
+end
+
+function PP.completeBusiness(cid, pd, order)
+    local b = order.business
+    if not b or order.collected then return end
+    local ok, why = stashDeposit(b, order.items)
+    local label = order.homeProperty and order.homeProperty.label or 'business'
+    if not ok then
+        -- Nothing was added. Leave the box at the door so the staff can take it by hand, and say why.
+        b.failed = true
+        PPStore.savePlayer(cid)
+        print(('[as-postalprime] business delivery %s: could not fill stash %s (%s); the box stays at the door'):format(tostring(order.parcelRef or order.id), tostring(b.stash and b.stash.id), tostring(why)))
+        if b.job then toastJob(b.job, T('toast.businessFailed', label), 'error') end
+        return
+    end
+    order.collected = true
+    removeOrder(pd, order)
+    pushHistory(pd, order)
+    PPStore.savePlayer(cid)
+    TriggerClientEvent('as-postalprime:client:homeRemove', -1, order.id)
+    if order.parcel then TriggerEvent('as-postalprime:parcelCollected', cid, order.parcelRef, nil) end
+    TriggerEvent('as-postalprime:businessDelivered', cid, order.parcelRef, b.job, b.stash and b.stash.id)
+    if b.job then toastJob(b.job, T('toast.businessDelivered', label), 'success') end
+    local src = onlineSources[cid]
+    if src then TriggerClientEvent('as-postalprime:client:updated', src) end
 end
 
 -- A locker order becomes ready for pickup: the customer gets their code and a waypoint. byName = a
@@ -898,7 +976,7 @@ function PP.readyLocker(cid, order, byName)
     local src = onlineSources[cid]
     if src then
         TriggerClientEvent('as-postalprime:client:updated', src)
-        pushPhoneNotification(src, T('notif.ready.title'),
+        PP.notifyOrder(src, order, T('notif.ready.title'),
             byName and T('notif.ready.byCourier', byName, order.lockerLabel)
                 or T('notif.ready.default', order.lockerLabel))
         local locker = findLocker(order.lockerId)
@@ -923,13 +1001,16 @@ AddEventHandler('as-postalprime:takeHomeParcel', function(orderId)
 
     local ownerCid, ownerPd, order
     for cid, pd in pairs(PPStore.players) do
-        local o = pd.active
-        if o and o.id == orderId and o.delivery == 'home' then
-            ownerCid, ownerPd, order = cid, pd, o
-            break
+        for _, o in ipairs(eachOrder(pd)) do
+            if o.id == orderId and o.delivery == 'home' then
+                ownerCid, ownerPd, order = cid, pd, o
+                break
+            end
         end
+        if order then break end
     end
     if not order or not order.ready or order.collected or order.expired or not order.homeProperty then return end
+    if order.business and not order.business.failed then return end   -- goes straight to the stash, not for taking
 
     local c = order.homeProperty.coords
     local ped = GetPlayerPed(source)
@@ -944,9 +1025,11 @@ AddEventHandler('as-postalprime:takeHomeParcel', function(orderId)
 
     order.collected = true
     if takerCid ~= ownerCid then order.takenBy = PPBridge.getCharacterName(source) end
-    ownerPd.active = nil
+    removeOrder(ownerPd, order)
     pushHistory(ownerPd, order)
     PPStore.savePlayer(ownerCid)
+
+    if order.parcel then TriggerEvent('as-postalprime:parcelCollected', ownerCid, order.parcelRef, source) end
 
     TriggerClientEvent('as-postalprime:client:homeRemove', -1, order.id)
 
@@ -959,10 +1042,10 @@ AddEventHandler('as-postalprime:takeHomeParcel', function(orderId)
         TriggerClientEvent('as-postalprime:client:updated', ownerSrc)
         TriggerClientEvent('as-postalprime:client:orderReady:clear', ownerSrc)
         if takerCid == ownerCid then
-            pushPhoneNotification(ownerSrc, T('notif.collected.title'),
+            PP.notifyOrder(ownerSrc, order, T('notif.collected.title'),
                 T('notif.homePickedUp.body', order.homeProperty.label))
         else
-            pushPhoneNotification(ownerSrc, T('notif.homeTaken.title'),
+            PP.notifyOrder(ownerSrc, order, T('notif.homeTaken.title'),
                 T('notif.homeTaken.body', order.homeProperty.label))
         end
     end
@@ -980,6 +1063,7 @@ end)
 --       prepSeconds = 180, expireSeconds = 172800,   -- optional
 --       items = { { item = 'passport', label = 'Passport', icon = '🛂', qty = 1, metadata = { ... } } },
 --   })
+--   delivery = 'business' + dropoff = { key, label, job, coords, stash } delivers to a business and fills its stash (see README).
 --   err is 'busy' when the player already has a pile of uncollected parcels (try again later), 'bad_locker', 'bad_item' or 'bad_request'.
 --   A parcel never blocks the player ordering from the shop, and a shop order never blocks a parcel.
 --
@@ -996,8 +1080,37 @@ exports('createParcel', function(cid, parcel)
     if type(cid) ~= 'string' or type(parcel) ~= 'table' or type(parcel.items) ~= 'table' or #parcel.items == 0 then
         return false, 'bad_request'
     end
-    local locker = findLocker(parcel.lockerId)
-    if not locker then return false, 'bad_locker' end
+    -- delivery = 'home' + propertyKey (one of exports['as-postalprime']:getHomeProperties(cid)) puts the box at a
+    -- front door instead of a locker. hidden = true keeps the order out of the phone app and widget and
+    -- silences its phone notifications (used by the parts site, which shows its own tracking).
+    local isBusiness = parcel.delivery == 'business'
+    local isHome = parcel.delivery == 'home' or isBusiness
+    local locker, property, business = nil, nil, nil
+    if isBusiness then
+        -- delivery = 'business' + dropoff = { key, label, job, coords = {x,y,z,w}, stash = { id, label, slots, weight, register } }:
+        -- a courier (player or NPC van) takes it to those coords and the items then go into that stash. The caller
+        -- supplies the destination, so only trusted server resources should ever call this.
+        if not (Config.business and Config.business.enabled) then return false, 'business_unavailable' end
+        local d = parcel.dropoff
+        if type(d) ~= 'table' or type(d.coords) ~= 'table' or type(d.stash) ~= 'table' or type(d.stash.id) ~= 'string' or d.stash.id == '' then
+            return false, 'bad_dropoff'
+        end
+        local x, y, z = tonumber(d.coords.x), tonumber(d.coords.y), tonumber(d.coords.z)
+        if not (x and y and z) then return false, 'bad_dropoff' end
+        local label = tostring(d.label or d.key or 'Business'):sub(1, 60)
+        property = { key = 'biz:' .. tostring(d.key or d.job or label):sub(1, 40), label = label, address = label,
+                     coords = { x = x, y = y, z = z, w = tonumber(d.coords.w) or 0.0 } }
+        business = { job = d.job and tostring(d.job) or nil,
+                     stash = { id = d.stash.id, label = d.stash.label, slots = d.stash.slots, weight = d.stash.weight,
+                               owner = d.stash.owner, groups = d.stash.groups, register = d.stash.register == true } }
+    elseif isHome then
+        if not (Config.home and Config.home.enabled) or not PPHousing.available() then return false, 'home_unavailable' end
+        property = PPHousing.resolve(cid, tostring(parcel.propertyKey or ''))
+        if not property then return false, 'bad_property' end
+    else
+        locker = findLocker(parcel.lockerId)
+        if not locker then return false, 'bad_locker' end
+    end
 
     local items = {}
     for _, it in ipairs(parcel.items) do
@@ -1021,20 +1134,90 @@ exports('createParcel', function(cid, parcel)
 
     local now = os.time()
     local prep = tonumber(parcel.prepSeconds) or Config.order.prepSeconds or 180
+    if isHome then prep = prep + homeTravelSeconds(property.coords) end
     local expire = tonumber(parcel.expireSeconds) or Config.order.expireSecondsAfterReady or 1800
-    pd.parcels[#pd.parcels + 1] = {
+    local order = {
         id = newOrderId(), items = items,
-        lockerId = locker.id, lockerLabel = locker.label, delivery = 'locker',
+        lockerId = isHome and ('home:' .. property.key) or locker.id,
+        lockerLabel = isHome and T('order.homeLabel', property.label) or locker.label,
+        delivery = isHome and 'home' or 'locker',
+        homeProperty = property, business = business,
         itemsTotal = 0, deliveryFee = 0, total = 0,
-        placedAt = now, readyAt = now + prep, expiresAt = now + prep + expire, expireSeconds = expire,
+        placedAt = now, readyAt = now + prep,
+        expiresAt = (not isHome) and (now + prep + expire) or nil, expireSeconds = expire,
         ready = false, collected = false, expired = false, code = newCode(),
-        parcel = true, parcelSource = caller, parcelRef = parcel.ref, sender = parcel.sender and tostring(parcel.sender):sub(1, 60) or nil,
+        parcel = true, hidden = parcel.hidden == true or nil,
+        parcelSource = caller, parcelRef = parcel.ref, sender = parcel.sender and tostring(parcel.sender):sub(1, 60) or nil,
     }
+    pd.parcels[#pd.parcels + 1] = order
     PPStore.savePlayer(cid)
 
     local src = onlineSources[cid]
     if src then TriggerClientEvent('as-postalprime:client:updated', src) end
-    return true
+    return true, nil, order.id
+end)
+
+-- ─── Status for other resources (the parts site tracks its orders with these) ────────────────
+-- getParcels(cid, refPrefix) -> list of parcels sent with createParcel (in flight and recent), newest first.
+--   { id, ref, status, delivery, lockerId, lockerLabel, code, placedAt, readyAt, expiresAt, courier, deliveredBy }
+--   status: preparing | waiting | collecting | out | ready | delivered | collected | expired
+--   timestamps are unix seconds. code is only given while a locker order is ready to collect.
+local function parcelStatus(o)
+    if o.expired then return 'expired' end
+    if o.collected then return 'collected' end
+    if o.ready then return o.delivery == 'home' and 'delivered' or 'ready' end
+    local c = o.courier and o.courier.state or nil
+    if c == 'board' then return 'waiting' end
+    if c == 'claimed' then return 'collecting' end
+    if c == 'loaded' then return 'out' end
+    return 'preparing'
+end
+
+local function describeParcel(o)
+    local status = parcelStatus(o)
+    local courierName = nil
+    if o.courier and o.courier.cid and status ~= 'waiting' then
+        local csrc = onlineSources[o.courier.cid]
+        if csrc then
+            local ok, n = pcall(PPBridge.getCharacterName, csrc)
+            if ok then courierName = n end
+        end
+    end
+    return {
+        id = o.id, ref = o.parcelRef, status = status, delivery = o.delivery or 'locker',
+        lockerId = o.lockerId, lockerLabel = o.lockerLabel,
+        code = (status == 'ready') and o.code or nil,
+        placedAt = o.placedAt, readyAt = o.readyAt, expiresAt = o.expiresAt,
+        courier = courierName, deliveredBy = o.deliveredBy,
+    }
+end
+
+exports('getParcels', function(cid, refPrefix)
+    if type(cid) ~= 'string' then return {} end
+    local pd = PPStore.getPlayer(cid)
+    local out = {}
+    local function add(o)
+        if not o.parcel or o.parcelRef == nil then return end
+        if refPrefix and tostring(o.parcelRef):sub(1, #refPrefix) ~= refPrefix then return end
+        out[#out + 1] = describeParcel(o)
+    end
+    for _, o in ipairs(eachOrder(pd)) do add(o) end
+    for _, o in ipairs(pd.history or {}) do add(o) end
+    table.sort(out, function(a, b) return (a.placedAt or 0) > (b.placedAt or 0) end)
+    return out
+end)
+
+-- Where a character can have a parcel sent: { lockers = { {id,label} }, home = { enabled, fee, properties = { {key,label,address} } } }
+exports('getDeliveryInfo', function(cid)
+    local lockers = {}
+    for _, l in ipairs(Config.lockers) do lockers[#lockers + 1] = { id = l.id, label = l.label } end
+    local homeOn = (Config.home and Config.home.enabled and PPHousing.available()) and true or false
+    local props = {}
+    if homeOn and type(cid) == 'string' then
+        for _, p in ipairs(PPHousing.list(cid)) do props[#props + 1] = { key = p.key, label = p.label, address = p.address } end
+    end
+    return { lockers = lockers, home = { enabled = homeOn, fee = (Config.home and Config.home.fee) or 0, properties = props },
+             business = { enabled = (Config.business and Config.business.enabled) and true or false } }
 end)
 
 -- Background sweep, every few seconds: flips orders to "ready" once their prep time is up, and
@@ -1065,6 +1248,8 @@ CreateThread(function()
                     elseif not (PPCourier and PPCourier.tryBoard(cid, order)) then
                         PP.readyLocker(cid, order)
                     end
+                elseif order.ready and order.business and not order.business.failed and now >= (order.business.at or 0) then
+                    PP.completeBusiness(cid, pd, order)
                 elseif order.ready and order.expiresAt and now > order.expiresAt then
                     removeOrder(pd, order)
                     order.expired = true
@@ -1078,7 +1263,7 @@ CreateThread(function()
                         if src then
                             TriggerClientEvent('as-postalprime:client:updated', src)
                             if not hasReadyLockerOrder(pd) then TriggerClientEvent('as-postalprime:client:orderReady:clear', src) end
-                            pushPhoneNotification(src, T('notif.parcelReturned.title'),
+                            PP.notifyOrder(src, order, T('notif.parcelReturned.title'),
                                 T('notif.parcelReturned.body', order.lockerLabel))
                         end
                     elseif src then

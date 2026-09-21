@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Postal Prime widget</title>
+<style>
+    /* Everything is sized in rem, and the script sets 1rem = height / 14.3, so the same layout fits any phone
+       resolution: the small widget is about 14.3rem square and the medium one twice as wide. */
+    :root { --navy: #1a4fb4; --red: #e21f2b; --red2: #b8161f; --green: #067d62; --dim: #565959; --hair: #e3e6e6; --surf: #f4f4f4; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #fff; color: #0f1111;
+        font-family: "Amazon Ember", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; }
+    body { font-size: 1.2rem; cursor: pointer; }
+    #w { position: relative; width: 100%; height: 100%; padding: 1.4rem; display: flex; flex-direction: column; overflow: hidden; }
+    #w::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: .4rem; background: linear-gradient(90deg, var(--navy) 0 50%, var(--red) 50% 100%); }
+    .ic { width: 1em; height: 1em; vertical-align: -0.125em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .top { display: flex; align-items: center; justify-content: space-between; min-height: 2.1rem; flex-shrink: 0; }
+    .logo { height: 2.1rem; display: block; }
+    .badge { background: var(--red); color: #fff; font-size: 1rem; font-weight: 800; border-radius: 99rem; min-width: 1.9rem; height: 1.9rem;
+        display: grid; place-items: center; padding: 0 .5rem; }
+    .count { font-size: 1.1rem; color: var(--dim); }
+    .pill { display: inline-block; font-size: 1.05rem; font-weight: 700; padding: .3rem .9rem; border-radius: 99rem; white-space: nowrap; }
+    .pill.prep { background: rgba(226,31,43,.10); color: var(--red2); }
+    .pill.out { background: rgba(26,79,180,.12); color: var(--navy); }
+    .pill.ready { background: rgba(6,125,98,.13); color: var(--green); }
+    .pill.done { background: var(--surf); color: var(--dim); }
+
+    /* small */
+    .sm-body { margin-top: auto; }
+    .big { font-size: 1.7rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+    .meta { font-size: 1.15rem; color: var(--dim); margin: .3rem 0 .9rem; display: flex; align-items: center; gap: .4rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bar { height: .6rem; border-radius: 9rem; background: #e6ebf5; overflow: hidden; }
+    .bar i { display: block; height: 100%; border-radius: 9rem; background: linear-gradient(90deg, var(--navy), #3a76e0); transition: width .4s ease; }
+    .bar.red i { background: linear-gradient(90deg, var(--red2), var(--red)); }
+    .code { margin-top: auto; background: #f1f6ff; border-radius: 1.2rem; padding: .8rem 1rem; border: .15rem dashed #9db8ec; }
+    .code small { display: block; font-size: .95rem; color: var(--dim); letter-spacing: .06em; text-transform: uppercase; font-weight: 700; }
+    .code b { font-size: 2.5rem; letter-spacing: .14em; color: var(--navy); font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .place { font-size: 1.15rem; color: var(--dim); margin-top: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .empty { margin: auto 0; text-align: center; color: var(--dim); font-size: 1.2rem; line-height: 1.35; }
+    .empty svg { width: 3rem; height: 3rem; color: #b4bcc9; display: block; margin: 0 auto .6rem; }
+
+    /* medium */
+    .rows { margin-top: .4rem; flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+    .orow { display: flex; align-items: center; gap: 1rem; padding: .65rem 0; border-top: .1rem solid var(--hair); min-height: 0; }
+    .orow:first-child { border-top: 0; }
+    .oi { width: 3.2rem; height: 3.2rem; border-radius: 1.05rem; background: #eef3fc; color: var(--navy); display: grid; place-items: center; flex-shrink: 0; }
+    .oi svg { width: 1.7rem; height: 1.7rem; }
+    .oi.g { background: rgba(6,125,98,.12); color: var(--green); }
+    .oi.r { background: rgba(226,31,43,.10); color: var(--red); }
+    .oi.d { background: var(--surf); color: var(--dim); }
+    .ot { flex: 1; min-width: 0; }
+    .ot b { display: block; font-size: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ot small { display: block; font-size: 1.05rem; color: var(--dim); margin-top: .15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></symbol>
+    <symbol id="i-truck" viewBox="0 0 24 24"><path d="M1 6h13v11H1zM14 10h4l4 3v4h-8M6 20a2 2 0 1 0 0-.01M18 20a2 2 0 1 0 0-.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  </defs>
+</svg>
+<div id="w"></div>
+<script src="i18n.js"></script>
+<script>
+(function () {
+    var params = new URLSearchParams(location.search);
+    var size = params.get('size') === 'md' ? 'md' : 'sm';
+    var height = parseInt(params.get('height'), 10) || 143;
+    var data = null;              // last answer from the server, null until the first one arrives
+    var refreshMs = 10000;
+    var timer = null;
+
+    function scale() { document.documentElement.style.fontSize = (height / 14.3) + 'px'; }
+    scale();
+
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+    // W(key, english, ...args): the language file's text when it has the key, else the English default.
+    // %s is filled in order; the result is HTML-escaped once, so it can be dropped straight into markup.
+    function W(key, def) {
+        var s = (typeof I18N === 'object' && I18N && I18N[key] != null) ? I18N[key] : def;
+        var args = Array.prototype.slice.call(arguments, 2), i = 0;
+        return esc(String(s).replace(/%[sd]/g, function () { return i < args.length ? args[i++] : ''; }));
+    }
+    function icon(id) { return '<svg class="ic"><use href="#' + id + '"/></svg>'; }
+
+    var STATUS = {
+        preparing:  { pill: 'prep',  key: 'widget.preparing',  def: 'Preparing',            ico: 'i-clock', tone: 'r', bar: 'red' },
+        waiting:    { pill: 'prep',  key: 'widget.waiting',    def: 'Waiting for a courier', ico: 'i-clock', tone: 'r', bar: '' },
+        collecting: { pill: 'out',   key: 'widget.collecting', def: 'Courier collecting',    ico: 'i-truck', tone: '',  bar: '' },
+        out:        { pill: 'out',   key: 'widget.out',        def: 'Out for delivery',      ico: 'i-truck', tone: '',  bar: '' },
+        ready:      { pill: 'ready', key: 'widget.ready',      def: 'Ready',                 ico: 'i-box',   tone: 'g', bar: '' },
+        delivered:  { pill: 'ready', key: 'widget.delivered',  def: 'Delivered',             ico: 'i-home',  tone: 'g', bar: '' },
+        collected:  { pill: 'done',  key: 'widget.collected',  def: 'Collected',             ico: 'i-check', tone: 'd', bar: '' },
+        expired:    { pill: 'done',  key: 'widget.expired',    def: 'Expired',               ico: 'i-check', tone: 'd', bar: '' },
+        cancelled:  { pill: 'done',  key: 'widget.cancelled',  def: 'Cancelled',             ico: 'i-check', tone: 'd', bar: '' },
+    };
+    var DONE = { collected: 1, expired: 1, cancelled: 1 };
+
+    function st(o) { return STATUS[o.status] || STATUS.preparing; }
+    function label(o) { return W(st(o).key, st(o).def); }
+    // The pill in the medium widget is short, so the long statuses get a short form (the row's second line has the detail).
+    function pillLabel(o) {
+        if (o.status === 'waiting') return W('widget.pillWaiting', 'Waiting');
+        if (o.status === 'collecting') return W('widget.pillCollecting', 'Collecting');
+        return label(o);
+    }
+
+    function itemsLabel(o) {
+        var names = (o.items || []).map(function (it) { return it.qty > 1 ? it.qty + 'x ' + it.label : it.label; });
+        var text = names.map(esc).join(', ');
+        if (o.extra > 0) text += ' ' + W('widget.more', '+%s more', o.extra);
+        return text;
+    }
+    function countText(o) { return o.itemCount === 1 ? W('widget.item', '1 item') : W('widget.items', '%s items', o.itemCount); }
+    function kind(o) { return o.delivery === 'home' ? W('widget.home', 'Home') : W('widget.locker', 'Locker'); }
+
+    // "Home · 2 items" / "Locker · 1 item"
+    function metaLine(o) {
+        return icon(o.delivery === 'home' ? 'i-home' : 'i-box') + kind(o) + ' · ' + countText(o);
+    }
+    // "Home · courier on the way" / "Locker · Legion Sq."
+    function subLine(o) {
+        var s = o.status, place;
+        if (o.delivery === 'home') {
+            if (s === 'out') place = W('widget.detailOut', 'courier on the way');
+            else if (s === 'waiting') place = W('widget.detailWaiting', 'waiting for a courier');
+            else if (s === 'collecting') place = W('widget.detailCollecting', 'courier collecting');
+            else if (s === 'delivered') place = W('widget.detailDoor', 'at your front door');
+            else place = countText(o);
+        } else {
+            place = o.lockerLabel ? esc(o.lockerLabel) : countText(o);
+        }
+        return kind(o) + ' · ' + place;
+    }
+
+    function header(right) {
+        return '<div class="top"><img class="logo" src="logo.png" alt="Postal Prime">' + (right || '') + '</div>';
+    }
+
+    function emptyState() {
+        return '<div class="empty">' + icon('i-box') + W('widget.none', 'No parcels on the way') + '</div>';
+    }
+
+    function renderSmall() {
+        var top = null;
+        var orders = (data && data.orders) || [];
+        for (var i = 0; i < orders.length; i++) { if (!DONE[orders[i].status]) { top = orders[i]; break; } }
+        if (!top) return header('') + emptyState();
+
+        var s = st(top);
+        if (top.status === 'ready') {
+            return header('<span class="pill ready">' + label(top) + '</span>') +
+                '<div class="place">' + icon('i-box') + '&nbsp;' + (top.lockerLabel ? kind(top) + ' · ' + esc(top.lockerLabel) : kind(top)) + '</div>' +
+                (top.code ? '<div class="code"><small>' + W('widget.pickupCode', 'Pickup code') + '</small><b>' + esc(top.code) + '</b></div>' : '');
+        }
+        if (top.status === 'delivered') {
+            return header(data.active > 0 ? '<span class="badge">' + data.active + '</span>' : '') +
+                '<div class="sm-body"><div class="big">' + W('widget.atDoor', 'At your front door') + '</div>' +
+                '<div class="meta" style="margin-bottom:0">' + metaLine(top) + '</div></div>';
+        }
+        var badge = data.active > 0 ? '<span class="badge">' + data.active + '</span>' : '';
+        return header(badge) +
+            '<div class="sm-body"><div class="big">' + label(top) + '</div>' +
+            '<div class="meta">' + metaLine(top) + '</div>' +
+            '<div class="bar ' + s.bar + '"><i style="width:' + Math.max(4, top.progress || 0) + '%"></i></div></div>';
+    }
+
+    function renderMedium() {
+        var orders = ((data && data.orders) || []).slice(0, 2);
+        var right = (data && data.active > 0)
+            ? '<span class="count">' + W('widget.active', '%s active', data.active) + '</span>'
+            : (orders.length ? '<span class="count">' + W('widget.recent', 'Recent') + '</span>' : '');
+        if (!orders.length) return header(right) + emptyState();
+        var rows = orders.map(function (o) {
+            var s = st(o);
+            var pill = (o.status === 'ready' && o.code)
+                ? '<span class="pill ready">' + W('widget.code', 'Code %s', o.code) + '</span>'
+                : '<span class="pill ' + s.pill + '">' + pillLabel(o) + '</span>';
+            return '<div class="orow"><div class="oi ' + s.tone + '">' + icon(s.ico) + '</div>' +
+                '<div class="ot"><b>' + itemsLabel(o) + '</b><small>' + subLine(o) + '</small></div>' + pill + '</div>';
+        }).join('');
+        return header(right) + '<div class="rows">' + rows + '</div>';
+    }
+
+    function render() {
+        var el = document.getElementById('w');
+        if (!data) { el.innerHTML = header(''); return; }   // first answer not in yet: just the logo
+        el.innerHTML = size === 'md' ? renderMedium() : renderSmall();
+    }
+
+    function refresh() {
+        if (document.hidden) return;
+        fetch('https://as-postalprime/as-postalprime/widget', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+        }).then(function (r) { return r.json(); }).then(function (d) {
+            if (!d || typeof d !== 'object') return;
+            d.orders = Array.isArray(d.orders) ? d.orders : [];   // an empty Lua table can arrive as {}
+            data = d;
+            var ms = Math.max(5, d.refresh || 10) * 1000;
+            if (ms !== refreshMs) { refreshMs = ms; schedule(); }
+            render();
+        }).catch(function () { /* keep showing the last answer; the next tick tries again */ });
+    }
+
+    function schedule() {
+        if (timer) clearInterval(timer);
+        timer = setInterval(refresh, refreshMs);
+    }
+
+    // A tap opens the app (the phone only honours this for widgets registered as interactive).
+    document.body.addEventListener('click', function () {
+        try { parent.postMessage({ type: 'sd-phone:widget:open' }, '*'); } catch (e) { /* not framed */ }
+    });
+
+    // The phone tells the widget its size when it loads or the home screen is rearranged.
+    window.addEventListener('message', function (e) {
+        var m = e.data;
+        if (!m || m.type !== 'sd-phone:widget') return;
+        if (m.size === 'sm' || m.size === 'md') size = m.size;
+        if (m.height) { height = m.height; scale(); }
+        render();
+        refresh();
+    });
+
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) refresh(); });
+
+    render();
+    refresh();
+    schedule();
+    // Language file: swap the text in once it arrives (loadLocale retries while the resource is still starting).
+    if (typeof loadLocale === 'function') loadLocale(function () { render(); });
+})();
+</script>
+</body>
+</html>

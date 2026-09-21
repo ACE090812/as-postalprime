@@ -41,6 +41,8 @@ Locales['en'] = {
     ['toast.orderCancelled'] = 'Order cancelled and refunded.',
     ['toast.orderCollected'] = 'Order collected!',
     ['toast.parcelCollected'] = 'Parcel collected!',
+    ['toast.businessDelivered'] = 'Delivery for %s has arrived and is in the stash.',
+    ['toast.businessFailed'] = 'Delivery for %s could not go into the stash (full?). The box is at the door.',
 
     -- App and orders
     ['app.name'] = 'Postal Prime',
@@ -471,4 +473,33 @@ Locales['en'] = {
 
     -- Locker keypad overlay
     ['kiosk.cancelAria'] = 'Cancel',
+
+    -- Phone widgets (ui/widget.html)
+    ['widget.name'] = 'Parcel tracking',
+    ['widget.preparing'] = 'Preparing',
+    ['widget.waiting'] = 'Waiting for a courier',
+    ['widget.collecting'] = 'Courier collecting',
+    ['widget.out'] = 'Out for delivery',
+    ['widget.ready'] = 'Ready',
+    ['widget.delivered'] = 'Delivered',
+    ['widget.collected'] = 'Collected',
+    ['widget.expired'] = 'Expired',
+    ['widget.cancelled'] = 'Cancelled',
+    ['widget.atDoor'] = 'At your front door',
+    ['widget.locker'] = 'Locker',
+    ['widget.home'] = 'Home',
+    ['widget.item'] = '1 item',
+    ['widget.items'] = '%s items',
+    ['widget.more'] = '+%s more',
+    ['widget.active'] = '%s active',
+    ['widget.recent'] = 'Recent',
+    ['widget.none'] = 'No parcels on the way',
+    ['widget.pickupCode'] = 'Pickup code',
+    ['widget.code'] = 'Code %s',
+    ['widget.pillWaiting'] = 'Waiting',
+    ['widget.pillCollecting'] = 'Collecting',
+    ['widget.detailOut'] = 'courier on the way',
+    ['widget.detailWaiting'] = 'waiting for a courier',
+    ['widget.detailCollecting'] = 'courier collecting',
+    ['widget.detailDoor'] = 'at your front door',
 }

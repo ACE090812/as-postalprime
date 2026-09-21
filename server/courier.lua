@@ -550,7 +550,7 @@ lib.callback.register('as-postalprime:courier:claim', function(source, orderId)
     local osrc = PP.source(ownerCid)
     if osrc then
         TriggerClientEvent('as-postalprime:client:updated', osrc)
-        PP.notify(osrc, T('courier.notif.claimed.title'), T('courier.notif.claimed.body'))
+        PP.notifyOrder(osrc, o, T('courier.notif.claimed.title'), T('courier.notif.claimed.body'))
     end
     return { ok = true }
 end)
@@ -636,7 +636,7 @@ lib.callback.register('as-postalprime:courier:load', function(source, orderId)
     local osrc = PP.source(ownerCid)
     if osrc then
         TriggerClientEvent('as-postalprime:client:updated', osrc)
-        PP.notify(osrc, T('courier.notif.out.title'), destOf(o).kind == 'locker'
+        PP.notifyOrder(osrc, o, T('courier.notif.out.title'), destOf(o).kind == 'locker'
             and T('courier.notif.out.locker')
             or T('courier.notif.out.home'))
     end
@@ -819,7 +819,7 @@ function PPCourier.tryBoard(cid, order)
     local src = PP.source(cid)
     if src then
         TriggerClientEvent('as-postalprime:client:updated', src)
-        PP.notify(src, T('courier.notif.waiting.title'),
+        PP.notifyOrder(src, order, T('courier.notif.waiting.title'),
             (order.parcel and T('courier.notif.waiting.parcel', dest.label) or T('courier.notif.waiting.order', dest.label)))
     end
     for _, csrc in pairs(Duty) do

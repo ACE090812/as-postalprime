@@ -1,4 +1,18 @@
 CreateThread(function()
+    -- Small + medium home-screen widgets (ui/widget.html). Interactive so a tap opens the app.
+    local widgets = nil
+    if Config.widget == nil or Config.widget.enabled ~= false then
+        widgets = {
+            {
+                id = 'parcels',
+                name = T('widget.name'),
+                ui = GetCurrentResourceName() .. '/ui/widget.html',
+                interactive = true,
+                sizes = { 'sm', 'md' },
+            },
+        }
+    end
+
     local ok, err = exports['sd-phone']:addCustomApp({
         identifier  = Config.app.identifier,
         name        = Config.app.name,
@@ -6,6 +20,7 @@ CreateThread(function()
         icon        = Config.app.icon,
 
         ui = GetCurrentResourceName() .. '/ui/index.html',
+        widgets = widgets,
     })
     if not ok then
         print(('[as-postalprime] failed to register the Postal Prime app with sd-phone: %s'):format(tostring(err)))
@@ -29,6 +44,11 @@ RegisterNUICallback('as-postalprime/state', function(_, cb)
         table.sort(result.lockers, function(a, b) return (a.distanceKm or 0) < (b.distanceKm or 0) end)
     end
     cb(result)
+end)
+
+-- Light feed for the home-screen widgets (ui/widget.html polls it while the phone shows the widget).
+RegisterNUICallback('as-postalprime/widget', function(_, cb)
+    cb(lib.callback.await('as-postalprime:getWidget', false))
 end)
 
 RegisterNUICallback('as-postalprime/checkout', function(data, cb)

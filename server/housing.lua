@@ -10,6 +10,7 @@
 -- or not the property is currently loaded/spawned.
 
 PPHousing = {}
+local warned = {}
 
 local function pick(t, ...)
     for _, k in ipairs({ ... }) do
@@ -25,9 +26,10 @@ local function toPoint(v)
         v = decoded
     end
     if type(v) ~= 'table' then return nil end
-    local x, y, z = tonumber(pick(v, 'x', 1)), tonumber(pick(v, 'y', 2)), tonumber(pick(v, 'z', 3))
+    -- pick() returns nothing (not nil) when no key matches, and tonumber() with no argument throws: wrap in ( )
+    local x, y, z = tonumber((pick(v, 'x', 1))), tonumber((pick(v, 'y', 2))), tonumber((pick(v, 'z', 3)))
     if not (x and y and z) then return nil end
-    return { x = x, y = y, z = z, w = tonumber(pick(v, 'w', 'h', 4)) or 0.0 }
+    return { x = x, y = y, z = z, w = tonumber((pick(v, 'w', 'h', 4))) or 0.0 }
 end
 
 local function decode(s)
@@ -53,7 +55,10 @@ local function listNolag(cid)
         ]], { cid, cid, ('$."%s"'):format(cid) })
     end)
     if not ok then
-        print(('[as-postalprime] nolag_properties lookup failed: %s'):format(tostring(err)))
+        if not warned.nolag then
+            warned.nolag = true
+            print(('[as-postalprime] nolag_properties lookup failed (shown once; is this really nolag_properties? set Config.home.housing to your housing script): %s'):format(tostring(err)))
+        end
         return {}
     end
 
@@ -90,7 +95,10 @@ local function listQbx(cid)
         ]], { cid, cid })
     end)
     if not ok then
-        print(('[as-postalprime] qbx_properties lookup failed: %s'):format(tostring(err)))
+        if not warned.qbx then
+            warned.qbx = true
+            print(('[as-postalprime] qbx_properties lookup failed (shown once): %s'):format(tostring(err)))
+        end
         return {}
     end
 

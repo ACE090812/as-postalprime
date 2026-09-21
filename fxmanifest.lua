@@ -21,6 +21,7 @@ server_scripts {
     'server/housing.lua', -- home delivery: reads nolag_properties / qbx_properties
     'server/store.lua',
     'server/main.lua',
+    'server/widget.lua', -- phone widget feed (reads PP from main.lua)
     'server/courier.lua', -- player courier job (needs main.lua's PP table)
 }
 

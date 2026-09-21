@@ -22,6 +22,16 @@ Config = {
         icon = 'nui://as-postalprime/ui/icon.png',
     },
 
+    -- Home-screen widgets (small and medium) that show your parcels: the most urgent one, its status and
+    -- pickup code. Players add them from the phone's widget gallery. false = no widgets are registered.
+    widget = {
+        enabled = true,
+        -- How often (seconds) an open widget asks the server for changes. Minimum 5.
+        refreshSeconds = 10,
+        -- Finished parcels (collected / expired / cancelled) stay in the medium widget for this many hours.
+        historyHours = 72,
+    },
+
     payment = {
         -- 'account' removes from a money account/balance (framework's cash account by default).
         -- 'item' removes a physical cash item from inventory instead. Charged at CHECKOUT, not
@@ -99,7 +109,7 @@ Config = {
     home = {
         enabled = true,
         -- 'auto' = every supported housing script that's started, or force 'nolag_properties' / 'qbx_properties'.
-        housing = 'auto',
+        housing = 'qbx_properties',
         -- Delivery charge for home delivery - used INSTEAD of the normal delivery fee (plus.deliveryFee). Free with Postal Prime Plus.
         fee = 15,
         -- Travel time added to normal prep time, from this depot to the property's door.
@@ -117,6 +127,16 @@ Config = {
         despawnAfterMs = 20000,    -- how long the van drives off before it's removed
         takeDistance = 2.5,        -- ox_target / qb-target distance to the box
         takeCheckDistance = 10.0,  -- server-side sanity check when taking it
+    },
+
+    -- Business delivery: another resource (the parts shop on as-browser) can send a parcel to a business. A courier
+    -- (player, or the NPC van when nobody is on duty) takes it to the business's coordinates, and once dropped the
+    -- items go straight into that business's ox_inventory stash and its employees get a notification.
+    -- The business's coordinates and stash come from the sending resource, not from here.
+    business = {
+        enabled = true,
+        playerDropSeconds = 3,     -- after a player courier places the box, wait this long before filling the stash
+        vanDropSeconds = 25,       -- after an NPC van drop (lets the van sequence play out first)
     },
 
     -- Renders the pickup keypad ON the locker model's screen (DUI + texture swap) instead of a
