@@ -83,6 +83,16 @@ RegisterNetEvent('as-postalprime:client:updated', function()
     SendNUIMessage({ action = 'as-postalprime:updated' })
 end)
 
+-- Short flavour animation when a sealed parcel (Config.parcelItems) is used - the server has
+-- already decided to give the real items by the time this fires, so this is cosmetic only and
+-- doesn't gate anything (reuses PPTakeAnim.play with no box to attach, just the anim itself).
+RegisterNetEvent('as-postalprime:client:openParcel', function()
+    local cfg = Config.parcelOpenAnim or {}
+    if PPTakeAnim then
+        PPTakeAnim.play(nil, nil, cfg.dict, cfg.clip, cfg.duration)
+    end
+end)
+
 -- ─── Order-ready map ping ─────────────────────────────────────────────────────
 -- A blip + waypoint dropped on the assigned locker the moment an order flips to "ready", so
 -- players don't have to remember which of the (possibly several) lockers it's sitting at.

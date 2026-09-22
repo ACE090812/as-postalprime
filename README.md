@@ -64,6 +64,50 @@ if you're on item-based payment and don't already have one. Every `image` needs 
 your inventory's own image folder - this resource only registers behaviour, it doesn't ship item
 art.
 
+## Sealed parcels
+
+Collecting an order (locker or home) no longer hands over the catalog items directly - it hands
+over ONE sealed parcel item instead (`Config.parcelItems[order.boxSize]`, so a bigger order gets
+a bigger box, same sizing that already picks the locker door/box model). Using that item is what
+actually gives the real items and removes the box; what's inside is stored on the item's own
+metadata (ox_inventory) / info (qb-inventory), so it survives a restart sitting in someone's
+inventory with nothing extra in the database.
+
+Placeholder icons for all four sizes ship in `icons/` - `pp_parcel_s.png` etc. They're plain flat
+boxes, not renders of your actual `asparcel_*` locker props, so swap them for something nicer
+whenever you like; same filenames, just replace the files.
+
+### ox_inventory (`data/items.lua`)
+
+```lua
+['pp_parcel_s']  = { label = 'Small Parcel',       weight = 500,  stack = false, close = true },
+['pp_parcel_m']  = { label = 'Medium Parcel',      weight = 1500, stack = false, close = true },
+['pp_parcel_l']  = { label = 'Large Parcel',       weight = 3000, stack = false, close = true },
+['pp_parcel_xl'] = { label = 'Extra Large Parcel', weight = 5000, stack = false, close = true },
+```
+
+`stack = false` matters - each box's contents are unique to it (its metadata), so two different
+orders' boxes must never merge into one inventory stack. Nothing else to wire up: `PPBridge.
+registerParcelOpener` (`server/bridge.lua`) calls `exports.ox_inventory:registerUsableItem` for
+each of these on its own at startup - no `client` export needed in the item definition.
+
+### qb-inventory (`qb-core`'s shared items)
+
+```lua
+['pp_parcel_s']  = { label = 'Small Parcel',       weight = 500,  type = 'item', useable = true, unique = true, shouldClose = true },
+['pp_parcel_m']  = { label = 'Medium Parcel',      weight = 1500, type = 'item', useable = true, unique = true, shouldClose = true },
+['pp_parcel_l']  = { label = 'Large Parcel',       weight = 3000, type = 'item', useable = true, unique = true, shouldClose = true },
+['pp_parcel_xl'] = { label = 'Extra Large Parcel', weight = 5000, type = 'item', useable = true, unique = true, shouldClose = true },
+```
+
+`unique = true` is the qb-inventory equivalent of `stack = false` above - every box is its own
+inventory slot, never merged. `useable = true` is required - `PPBridge.registerParcelOpener` calls
+`QBCore.Functions.CreateUseableItem` for each of these, which only fires for items marked useable.
+
+Most qb-core builds consume the item itself the moment it's used, before that callback runs - if
+yours doesn't and parcels are duplicating instead of disappearing, set `Config.qbConsumesOnUse =
+false` in `config.lua` and this resource removes it manually instead.
+
 ## How it works
 
 1. **Browse & add to cart** - the catalog is entirely config-driven (`Config.catalog`), rendered in
@@ -269,46 +313,6 @@ local lockers = exports['as-postalprime']:getLockers()   -- { { id, label }, ...
 Server events: `as-postalprime:parcelCollected` (citizenid, ref, source) and `as-postalprime:parcelExpired` (citizenid, ref) when it sat uncollected until it expired. `metadata` is given to the item when the parcel is taken (ox_inventory metadata, or `info` for qb-inventory).
 
 This needed these changes in `server/main.lua` and `server/bridge.lua` (already made): the `createParcel` and `getLockers` exports, items carrying `item` and `metadata` on collection, `PPBridge.addItem(source, item, count, metadata)`, and parcel orders skipping cancel and refund.
-
-### Hidden parcels, home delivery and status (used by the as-browser parts shop)
-
-`createParcel` also takes:
-
-- `hidden = true`: the parcel is left out of the Postal Prime phone app and widgets, and it sends no phone notifications. The sending resource is expected to show its own tracking. Couriers, lockers and doors treat it like any other parcel.
-- `delivery = 'home'` and `propertyKey = '<key>'` (one of `getDeliveryInfo(citizenid).home.properties`) instead of `lockerId`: a courier (or the NPC van) puts the box at the front door of that property. It stays there until somebody takes it, and it never expires.
-
-`createParcel` now returns `true, nil, orderId`. Extra error codes: `'bad_property'`, `'home_unavailable'`.
-
-```lua
-local parcels = exports['as-postalprime']:getParcels(citizenid, 'LSP-')   -- only parcels whose ref starts with the prefix (prefix optional)
--- { { id, ref, status, delivery, lockerId, lockerLabel, code, placedAt, readyAt, expiresAt, courier, deliveredBy }, ... }
--- status: preparing | waiting | collecting | out | ready | delivered | collected | expired
--- code is only given while a locker parcel is ready to collect.
-
-local info = exports['as-postalprime']:getDeliveryInfo(citizenid)
--- { lockers = { { id, label } }, home = { enabled, fee, properties = { { key, label, address } } } }
-```
-
-`as-postalprime:parcelCollected` now also fires for home parcels.
-
-## Business delivery (parcel to a business stash)
-
-A resource can send a parcel to a business instead of a person: the parcel is delivered like a home order (player couriers on the depot board with a waypoint at the business, or the NPC van when nobody is on duty), but it is not left for anyone to take. When the drop is done the items are put into the business's ox_inventory stash and the job's employees get a notification. The as-browser parts shop uses this for "Deliver to our business".
-
-```lua
-local ok, err, id = exports['as-postalprime']:createParcel(cid, {
-    ref = 'MY-1', sender = 'My Shop', hidden = true,
-    delivery = 'business',
-    dropoff = {
-        key = 'mechanic', job = 'mechanic', label = 'Hayes Auto',
-        coords = { x = -1421.6, y = -444.1, z = 35.9, w = 122.0 },   -- where the courier drops the box
-        stash = { id = 'mechanic_parts', label = 'Parts delivery', slots = 100, weight = 500000, register = true },
-    },
-    items = { { item = 'brake_pads', label = 'Brake pads', qty = 4 } },
-})
-```
-
-The destination comes from the calling resource, so only trusted server scripts should call it. `Config.business` switches it on (`enabled`) and sets how long after the drop the stash is filled (`playerDropSeconds` after a player courier, `vanDropSeconds` after the NPC van, so the van sequence can finish). Set `register = true` to have Postal Prime register the stash, or `false` to use a stash your job script already registers. If the stash cannot take the items (full, or ox_inventory missing) nothing is added, the box stays at the door for anyone to take by hand, and the job is told; details go to the console. On success the parcel counts as collected: `as-postalprime:parcelCollected` fires as usual, plus `as-postalprime:businessDelivered` (cid, ref, job, stash id). `getDeliveryInfo` now also returns `business = { enabled }`.
 
 ## Phone widgets
 

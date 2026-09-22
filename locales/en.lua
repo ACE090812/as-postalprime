@@ -41,8 +41,6 @@ Locales['en'] = {
     ['toast.orderCancelled'] = 'Order cancelled and refunded.',
     ['toast.orderCollected'] = 'Order collected!',
     ['toast.parcelCollected'] = 'Parcel collected!',
-    ['toast.businessDelivered'] = 'Delivery for %s has arrived and is in the stash.',
-    ['toast.businessFailed'] = 'Delivery for %s could not go into the stash (full?). The box is at the door.',
 
     -- App and orders
     ['app.name'] = 'Postal Prime',
@@ -70,6 +68,10 @@ Locales['en'] = {
     ['notif.expired.body'] = 'Your uncollected order at %s expired and was refunded in full.',
     ['notif.plusExpiring.title'] = 'Postal Prime Plus expiring soon',
     ['notif.plusExpiring.body'] = 'Your membership expires in less than 24 hours. Renew from the You tab to keep free delivery.',
+    ['notif.parcelOpened.body'] = 'Parcel opened - the items are in your inventory.',
+
+    -- Sealed parcel item (Config.parcelItems) - shown as its inventory metadata description
+    ['parcel.contains'] = 'Contains: %s',
 
     -- Courier: errors returned to the depot UI
     ['courier.err.off'] = 'The courier job is turned off',

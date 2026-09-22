@@ -10,11 +10,13 @@ PPTakeAnim = {}
 --- hand for its duration, then calls `done()`. `done` is a plain callback, not a promise - callers
 --- kick off the actual TriggerServerEvent from inside it so nothing is handed over until the
 --- animation has actually finished.
-function PPTakeAnim.play(box, done)
+--- dict/clip/duration are optional overrides (falls back to Config.takeAnim) - used to play a
+--- different anim from the same helper, e.g. Config.parcelOpenAnim when opening a sealed parcel.
+function PPTakeAnim.play(box, done, dict, clip, duration)
     local cfg = Config.takeAnim or {}
-    local dict = cfg.dict or 'pickup_object'
-    local clip = cfg.clip or 'pickup_low'
-    local duration = cfg.duration or 1300
+    dict = dict or cfg.dict or 'pickup_object'
+    clip = clip or cfg.clip or 'pickup_low'
+    duration = duration or cfg.duration or 1300
 
     local ped = PlayerPedId()
     lib.requestAnimDict(dict)
