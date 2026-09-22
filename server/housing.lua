@@ -4,12 +4,13 @@
 --                                pick an address it has no access to.
 --
 -- A property is deliverable when the character OWNS it, RENTS it (nolag), or is a KEYHOLDER on it -
--- except brutal_housing, where only OWNERSHIP can be checked from the database (see the note above
--- listBrutal below for why). Supports nolag_properties, qbx_properties, brutal_housing (v2) and
--- rcore_housing; with Config.home.housing = 'auto' every supported script that is started is queried
--- and the results are merged (keys are prefixed "nolag:" / "qbx:" / "brutal:" / "rcore:"). All of them
--- read straight from the housing script's own database tables via oxmysql, so it works whether or not
--- the property is currently loaded/spawned.
+-- except brutal_housing (owner only, see the note above listBrutal) and ps-housing apartments (skipped
+-- entirely, see the note above listPsHousing). Supports nolag_properties, qbx_properties,
+-- brutal_housing (v2), rcore_housing, qb-houses and ps-housing; with Config.home.housing = 'auto'
+-- every supported script that is started is queried and the results are merged (keys are prefixed
+-- "nolag:" / "qbx:" / "brutal:" / "rcore:" / "qbhouses:" / "pshousing:"). All of them read straight
+-- from the housing script's own database tables via oxmysql, so it works whether or not the property
+-- is currently loaded/spawned.
 
 PPHousing = {}
 local warned = {}
@@ -164,6 +165,124 @@ local function listBrutal(cid)
     return out
 end
 
+-- ─── qb-houses ───────────────────────────────────────────────────────────────
+-- Confirmed from the open-source qbcore-fivem/qb-houses repo (qb-houses.sql + server.lua):
+-- `player_houses` has `citizenid` (owner) and `keyholders`, which is confirmed by that resource's
+-- own code to be a plain JSON array of citizenid strings (`["cid1","cid2"]`) - no guessing needed.
+-- `houselocations.coords` is a JSON object read back with `json.decode`, and the script itself reads
+-- the entrance as `coords.enter.{x,y,z}`; toPoint() below is tried against `.enter` first and falls
+-- back to the raw object in case a fork stores it flat.
+local function listQbHouses(cid)
+    local rows
+    local ok, err = pcall(function()
+        rows = MySQL.query.await([[
+            SELECT h.house, l.label, l.coords
+            FROM player_houses h
+            LEFT JOIN houselocations l ON l.name = h.house
+            WHERE h.citizenid = ?
+               OR (h.keyholders IS NOT NULL AND h.keyholders <> '' AND JSON_CONTAINS(h.keyholders, JSON_QUOTE(?)))
+        ]], { cid, cid })
+    end)
+    if not ok then
+        if not warned.qbhouses then
+            warned.qbhouses = true
+            print(('[as-postalprime] qb-houses lookup failed (shown once; is this really qb-houses? set Config.home.housing to your housing script): %s'):format(tostring(err)))
+        end
+        return {}
+    end
+
+    local out = {}
+    for _, r in ipairs(rows or {}) do
+        local coordsObj = decode(r.coords)
+        local coords = coordsObj and (toPoint(coordsObj.enter) or toPoint(coordsObj)) or nil
+        if coords then
+            local label = (r.label and r.label ~= '') and r.label or tostring(r.house)
+            out[#out + 1] = {
+                key = 'qbhouses:' .. tostring(r.house),
+                label = label,
+                address = label,
+                coords = coords,
+            }
+        end
+    end
+    return out
+end
+
+-- ─── ps-housing ──────────────────────────────────────────────────────────────
+-- Confirmed from the open-source Project-Sloth/ps-housing repo (server/server.lua, server/sv_property.lua,
+-- client/cl_property.lua): a single `properties` table with `owner_citizenid` and `has_access` (also
+-- confirmed by that resource's own code as a plain JSON array of citizenids).
+-- Coords are NOT a dedicated column - the script itself derives the door position two different ways
+-- depending on the property's `shell`:
+--   - a normal "shell" property: `door_data` IS the coords object directly ({x,y,z,...}).
+--   - an MLO-shell property: `door_data` is just `{count = N}` (no coords) and the script instead
+--     centres the blip on the average of `zone_data.points` - reproduced below with the same averaging
+--     the client code uses (`getCenter` in client/cl_property.lua).
+-- One real gap: an APARTMENT-type property (`apartment` column set) has no coords in the database at
+-- all - its entrance comes from that resource's own `Config.Apartments[apartment].door`, a value baked
+-- into ps-housing's own config file, not the database. Those rows are skipped here rather than guessed;
+-- if you need apartment delivery too, send me `shared/config.lua`'s `Config.Apartments` table and I can
+-- hardcode a lookup table for it.
+local function psCentroid(points)
+    if type(points) ~= 'table' or #points == 0 then return nil end
+    local sx, sy, sz, n = 0, 0, 0, 0
+    for _, p in ipairs(points) do
+        local x, y, z = tonumber(p.x), tonumber(p.y), tonumber(p.z)
+        if x and y and z then
+            sx, sy, sz, n = sx + x, sy + y, sz + z, n + 1
+        end
+    end
+    if n == 0 then return nil end
+    return { x = sx / n, y = sy / n, z = sz / n }
+end
+
+local function psCoords(doorRaw, zoneRaw)
+    local door = decode(doorRaw) or (type(doorRaw) == 'table' and doorRaw or nil)
+    if type(door) == 'table' and door.x ~= nil then
+        return toPoint(door)
+    end
+    local zone = decode(zoneRaw) or (type(zoneRaw) == 'table' and zoneRaw or nil)
+    if type(zone) == 'table' and type(zone.points) == 'table' then
+        local c = psCentroid(zone.points)
+        if c then return toPoint(c) end
+    end
+    return nil
+end
+
+local function listPsHousing(cid)
+    local rows
+    local ok, err = pcall(function()
+        rows = MySQL.query.await([[
+            SELECT property_id, street, region, apartment, door_data, zone_data
+            FROM properties
+            WHERE owner_citizenid = ?
+               OR (has_access IS NOT NULL AND has_access <> '' AND JSON_CONTAINS(has_access, JSON_QUOTE(?)))
+        ]], { cid, cid })
+    end)
+    if not ok then
+        if not warned.pshousing then
+            warned.pshousing = true
+            print(('[as-postalprime] ps-housing lookup failed (shown once; is this really ps-housing? set Config.home.housing to your housing script): %s'):format(tostring(err)))
+        end
+        return {}
+    end
+
+    local out = {}
+    for _, r in ipairs(rows or {}) do
+        local coords = psCoords(r.door_data, r.zone_data)
+        if coords then
+            local label = (r.street and r.street ~= '') and r.street or (r.region and r.region ~= '' and r.region) or T('housing.property', r.property_id)
+            out[#out + 1] = {
+                key = 'pshousing:' .. r.property_id,
+                label = label,
+                address = r.street,
+                coords = coords,
+            }
+        end
+    end
+    return out
+end
+
 -- ─── rcore_housing ───────────────────────────────────────────────────────────
 -- Confirmed straight from rcore_housing's own bridge source (modules/bridge/db/server.lua, which
 -- ships unescrowed): `rcore_housing_properties` has `owner` and `tenant` as plain identifier columns,
@@ -237,6 +356,12 @@ local function enabledScripts()
     end
     if (want == 'auto' or want == 'rcore_housing') and GetResourceState('rcore_housing') == 'started' then
         out[#out + 1] = listRcore
+    end
+    if (want == 'auto' or want == 'qb-houses') and GetResourceState('qb-houses') == 'started' then
+        out[#out + 1] = listQbHouses
+    end
+    if (want == 'auto' or want == 'ps-housing') and GetResourceState('ps-housing') == 'started' then
+        out[#out + 1] = listPsHousing
     end
     return out
 end

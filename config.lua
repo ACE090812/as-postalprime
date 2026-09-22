@@ -115,11 +115,11 @@ Config = {
 
     -- Home delivery: pick "Home" at checkout and a courier van drops the parcel at the front door of one
     -- of your properties (owned, rented or keyholder). Works with nolag_properties, qbx_properties,
-    -- brutal_housing (v2) and rcore_housing.
+    -- brutal_housing (v2), rcore_housing, qb-houses and ps-housing.
     home = {
         enabled = true,
         -- 'auto' = every supported housing script that's started, or force one:
-        -- 'nolag_properties' / 'qbx_properties' / 'brutal_housing' / 'rcore_housing'.
+        -- 'nolag_properties' / 'qbx_properties' / 'brutal_housing' / 'rcore_housing' / 'qb-houses' / 'ps-housing'.
         -- Set to 'auto' so whichever one you actually have running gets picked up; only force a single
         -- name if you run more than one housing script side by side and want just one of them used here.
         housing = 'auto',
