@@ -207,48 +207,68 @@ function PPScreen.open(lockerId, label, prop)
         cx = 0.5, cy = 0.5, hover = nil, busy = false, ok = nil, msg = nil, dirty = true,
     }
     session = s
-    startCam(s)
+
+    -- Camera setup is cosmetic - if it errors for any reason (bad config, an odd prop state), the
+    -- keypad itself must still appear rather than the whole interaction silently going nowhere.
+    local camOk, camErr = pcall(startCam, s)
+    if not camOk then
+        print(('^1[as-postalprime]^0 locker screen camera error (continuing without the zoom): %s'):format(tostring(camErr)))
+    end
+
     SendDuiMessage(dui, json.encode(initMessage()))
+    push() -- send the real ('entry') view immediately; don't wait for the first mouse move/dirty tick
 
     CreateThread(function()
         local sens = cfg.sensitivity or 0.6
         local maxDist = cfg.maxDistance or 3.5
 
         while session == s do
-            Wait(0)
-            DisableAllControlActions(0)
+            local ok, err = pcall(function()
+                Wait(0)
+                DisableAllControlActions(0)
 
-            -- Virtual cursor from mouse movement (controls are disabled, so read the disabled values).
-            local dx = GetDisabledControlNormal(0, 1)
-            local dy = GetDisabledControlNormal(0, 2)
-            if dx ~= 0.0 or dy ~= 0.0 then
-                s.cx = math.min(1.0, math.max(0.0, s.cx + dx * sens))
-                s.cy = math.min(1.0, math.max(0.0, s.cy + dy * sens * ASPECT))
-                local h = hitTest(s.cx, s.cy)
-                if h ~= s.hover then s.hover = h end
-                s.dirty = true
-            end
+                -- Virtual cursor from mouse movement (controls are disabled, so read the disabled values).
+                local dx = GetDisabledControlNormal(0, 1)
+                local dy = GetDisabledControlNormal(0, 2)
+                if dx ~= 0.0 or dy ~= 0.0 then
+                    s.cx = math.min(1.0, math.max(0.0, s.cx + dx * sens))
+                    s.cy = math.min(1.0, math.max(0.0, s.cy + dy * sens * ASPECT))
+                    local h = hitTest(s.cx, s.cy)
+                    if h ~= s.hover then s.hover = h end
+                    s.dirty = true
+                end
 
-            if IsDisabledControlJustPressed(0, 24) and s.hover then -- left mouse
-                press(s.hover)
-            end
+                if IsDisabledControlJustPressed(0, 24) and s.hover then -- left mouse
+                    press(s.hover)
+                end
 
-            if IsDisabledControlJustPressed(0, 200) then -- ESC
+                if IsDisabledControlJustPressed(0, 200) then -- ESC
+                    PPScreen.close()
+                    return
+                end
+
+                local ped = PlayerPedId()
+                if IsEntityDead(ped) or not DoesEntityExist(s.prop)
+                    or #(GetEntityCoords(ped) - GetEntityCoords(s.prop)) > maxDist then
+                    PPScreen.close()
+                    return
+                end
+
+                if s.dirty and session == s then
+                    s.dirty = false
+                    push()
+                end
+            end)
+            -- A runtime error used to kill this thread outright, leaving `session` set forever: the
+            -- camera (and sometimes the whole locker) stayed stuck "zoomed in with no UI" until a
+            -- resource restart, since nothing ever called PPScreen.close() again. Now it's reported
+            -- once and cleaned up so the next interaction starts fresh instead of silently doing nothing.
+            if not ok then
+                print(('^1[as-postalprime]^0 locker screen loop error (closing the screen): %s'):format(tostring(err)))
                 PPScreen.close()
                 break
             end
-
-            local ped = PlayerPedId()
-            if IsEntityDead(ped) or not DoesEntityExist(s.prop)
-                or #(GetEntityCoords(ped) - GetEntityCoords(s.prop)) > maxDist then
-                PPScreen.close()
-                break
-            end
-
-            if s.dirty and session == s then
-                s.dirty = false
-                push()
-            end
+            if session ~= s then break end
         end
     end)
 

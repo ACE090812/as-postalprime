@@ -177,8 +177,10 @@ end
 -- qb-inventory (and qbx, which also commonly runs qb-inventory): goes through the FRAMEWORK core's
 -- CreateUseableItem, not the inventory resource itself, so this needs ensureCore() first.
 function PPBridge.registerUsable(itemName, handler)
+    print(('[as-postalprime] registering usable item "%s" (inventory=%s)'):format(itemName, tostring(inventory)))
     if inventory == 'ox_inventory' then
         exports(itemName, function(event, item, inv, slot)
+            print(('[as-postalprime] %s export fired: event=%s slot=%s src=%s'):format(itemName, tostring(event), tostring(slot), tostring(inv and inv.id)))
             if event ~= 'usingItem' then return end
             local src = inv and inv.id
             if type(src) ~= 'number' then return end
