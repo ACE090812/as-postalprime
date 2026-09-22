@@ -104,6 +104,15 @@ Config = {
         boxSizeMaxUnits = { s = 2, m = 4, l = 7 },
     },
 
+    -- Played on the player when they use "Take Parcel" - at the locker wall (the box comes off the
+    -- open door) and on a home doorstep. The spawned box prop is attached to their hand for the
+    -- animation's duration so it looks like it's actually being lifted out, not just vanishing.
+    takeAnim = {
+        dict = 'pickup_object',
+        clip = 'pickup_low',
+        duration = 1300, -- ms; the box is deleted and the item handed over once this ends
+    },
+
     -- Home delivery: pick "Home" at checkout and a courier van drops the parcel at the front door of one
     -- of your properties (owned, rented or keyholder). Works with nolag_properties and qbx_properties.
     home = {

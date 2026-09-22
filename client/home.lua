@@ -8,6 +8,7 @@
 
 local parcels = {}    -- [orderId] = { data = {orderId, model, coords, label}, entity = obj|nil }
 local animating = {}  -- [orderId] = true while the courier sequence is playing (box held back until it ends)
+local taking = {}     -- [orderId] = true while the take animation is playing (blocks a repeat click)
 
 local function cfg() return Config.home or {} end
 
@@ -44,7 +45,14 @@ local function spawnBox(orderId, p)
     PPTarget.addEntity(
         obj, 'as-postalprime:homeparcel_' .. orderId,
         'fa-solid fa-box', T('target.takeParcel'), cfg().takeDistance or 2.5,
-        function() TriggerServerEvent('as-postalprime:takeHomeParcel', orderId) end
+        function()
+            if taking[orderId] then return end -- already mid-animation
+            taking[orderId] = true
+            PPTakeAnim.play(p.entity, function()
+                taking[orderId] = nil
+                TriggerServerEvent('as-postalprime:takeHomeParcel', orderId)
+            end)
+        end
     )
 end
 
@@ -199,6 +207,7 @@ AddEventHandler('as-postalprime:client:homeRemove', function(orderId)
     if p then despawnBox(p) end
     parcels[orderId] = nil
     animating[orderId] = nil
+    taking[orderId] = nil
 end)
 
 -- Everything already sitting on doorsteps (server restarts, joining late).

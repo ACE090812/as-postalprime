@@ -186,8 +186,10 @@ local function spawnBox(lockerId, doorSlot)
         'as-postalprime:takebox_' .. lockerId, coords, Config.lockerWall.takeRadius or 0.5,
         'fa-solid fa-box', T('target.takeParcel'), 2.5,
         function()
-            TriggerServerEvent('as-postalprime:takeBox', lockerId, doorSlot)
-            removeTakeZone(lockerId)
+            removeTakeZone(lockerId) -- stop repeat clicks while the take animation plays
+            PPTakeAnim.play(spawnedBoxes[lockerId], function()
+                TriggerServerEvent('as-postalprime:takeBox', lockerId, doorSlot)
+            end)
         end
     )
 end

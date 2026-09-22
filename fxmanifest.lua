@@ -27,6 +27,7 @@ server_scripts {
 
 client_scripts {
     'client/target.lua', -- must load before main.lua - defines the PPTarget bridge it uses
+    'client/takeanim.lua', -- "take it out" animation, used by main.lua and home.lua's take zones
     'client/screen.lua', -- on-model DUI screen; defines PPScreen used by main.lua
     'client/home.lua',   -- home delivery: courier van + doorstep parcel boxes
     'client/courier.lua', -- player courier job: depot, rental, carrying, GPS

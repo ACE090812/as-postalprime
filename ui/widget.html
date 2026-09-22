@@ -12,16 +12,16 @@
     html, body { width: 100%; height: 100%; overflow: hidden; background: #fff; color: #0f1111;
         font-family: "Amazon Ember", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; user-select: none; }
     body { font-size: 1.2rem; cursor: pointer; }
-    #w { position: relative; width: 100%; height: 100%; padding: 1.4rem; display: flex; flex-direction: column; overflow: hidden; }
+    #w { position: relative; width: 100%; height: 100%; padding: 1.1rem; display: flex; flex-direction: column; overflow: hidden; }
     #w::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: .4rem; background: linear-gradient(90deg, var(--navy) 0 50%, var(--red) 50% 100%); }
     .ic { width: 1em; height: 1em; vertical-align: -0.125em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-    .top { display: flex; align-items: center; justify-content: space-between; min-height: 2.1rem; flex-shrink: 0; }
-    .logo { height: 2.1rem; display: block; }
+    .top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-height: 2.1rem; flex-shrink: 0; }
+    .logo { height: 2.1rem; max-width: 42%; width: auto; display: block; flex-shrink: 1; }
     .badge { background: var(--red); color: #fff; font-size: 1rem; font-weight: 800; border-radius: 99rem; min-width: 1.9rem; height: 1.9rem;
-        display: grid; place-items: center; padding: 0 .5rem; }
-    .count { font-size: 1.1rem; color: var(--dim); }
-    .pill { display: inline-block; font-size: 1.05rem; font-weight: 700; padding: .3rem .9rem; border-radius: 99rem; white-space: nowrap; }
+        display: grid; place-items: center; padding: 0 .5rem; flex-shrink: 0; }
+    .count { font-size: 1.1rem; color: var(--dim); flex-shrink: 0; }
+    .pill { display: inline-block; font-size: .95rem; font-weight: 700; padding: .25rem .7rem; border-radius: 99rem; white-space: nowrap; flex-shrink: 0; max-width: 42%; overflow: hidden; text-overflow: ellipsis; }
     .pill.prep { background: rgba(226,31,43,.10); color: var(--red2); }
     .pill.out { background: rgba(26,79,180,.12); color: var(--navy); }
     .pill.ready { background: rgba(6,125,98,.13); color: var(--green); }
@@ -36,23 +36,23 @@
     .bar.red i { background: linear-gradient(90deg, var(--red2), var(--red)); }
     .code { margin-top: auto; background: #f1f6ff; border-radius: 1.2rem; padding: .8rem 1rem; border: .15rem dashed #9db8ec; }
     .code small { display: block; font-size: .95rem; color: var(--dim); letter-spacing: .06em; text-transform: uppercase; font-weight: 700; }
-    .code b { font-size: 2.5rem; letter-spacing: .14em; color: var(--navy); font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .code b { display: block; font-size: 1.9rem; letter-spacing: .08em; color: var(--navy); font-variant-numeric: tabular-nums; line-height: 1.1; white-space: nowrap; overflow: hidden; }
     .place { font-size: 1.15rem; color: var(--dim); margin-top: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .empty { margin: auto 0; text-align: center; color: var(--dim); font-size: 1.2rem; line-height: 1.35; }
     .empty svg { width: 3rem; height: 3rem; color: #b4bcc9; display: block; margin: 0 auto .6rem; }
 
     /* medium */
     .rows { margin-top: .4rem; flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
-    .orow { display: flex; align-items: center; gap: 1rem; padding: .65rem 0; border-top: .1rem solid var(--hair); min-height: 0; }
+    .orow { display: flex; align-items: center; gap: .7rem; padding: .5rem 0; border-top: .1rem solid var(--hair); min-height: 0; }
     .orow:first-child { border-top: 0; }
-    .oi { width: 3.2rem; height: 3.2rem; border-radius: 1.05rem; background: #eef3fc; color: var(--navy); display: grid; place-items: center; flex-shrink: 0; }
-    .oi svg { width: 1.7rem; height: 1.7rem; }
+    .oi { width: 2.6rem; height: 2.6rem; border-radius: .9rem; background: #eef3fc; color: var(--navy); display: grid; place-items: center; flex-shrink: 0; }
+    .oi svg { width: 1.4rem; height: 1.4rem; }
     .oi.g { background: rgba(6,125,98,.12); color: var(--green); }
     .oi.r { background: rgba(226,31,43,.10); color: var(--red); }
     .oi.d { background: var(--surf); color: var(--dim); }
     .ot { flex: 1; min-width: 0; }
-    .ot b { display: block; font-size: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .ot small { display: block; font-size: 1.05rem; color: var(--dim); margin-top: .15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ot b { display: block; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ot small { display: block; font-size: .92rem; color: var(--dim); margin-top: .1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 </style>
 </head>
 <body>
@@ -72,12 +72,28 @@
     var params = new URLSearchParams(location.search);
     var size = params.get('size') === 'md' ? 'md' : 'sm';
     var height = parseInt(params.get('height'), 10) || 143;
+    var width = parseInt(params.get('width'), 10) || 0;
     var data = null;              // last answer from the server, null until the first one arrives
     var refreshMs = 10000;
     var timer = null;
 
-    function scale() { document.documentElement.style.fontSize = (height / 14.3) + 'px'; }
+    // 1rem is meant to be height/14.3 (the small widget is ~14.3rem square, medium ~2x as wide).
+    // The height/width query params and the sd-phone:widget message are what the phone SAYS this
+    // widget's box is, but that didn't match the real thing closely enough (text was still getting
+    // cut off) - so scale off the iframe's own actual layout box instead, which is always right
+    // regardless of what any message claims. clientWidth/clientHeight are plain CSS pixels and
+    // don't change when fontSize changes, so this is safe to call repeatedly. Falls back to the
+    // params only for the very first paint, before the iframe has necessarily been laid out.
+    function scale() {
+        var w = document.documentElement.clientWidth || width || (size === 'md' ? 286 : 143);
+        var h = document.documentElement.clientHeight || height || 143;
+        var remH = h / 14.3;
+        var remW = w / (size === 'md' ? 28.6 : 14.3);
+        document.documentElement.style.fontSize = Math.min(remH, remW) + 'px';
+    }
     scale();
+    window.addEventListener('resize', scale);
+    window.addEventListener('load', scale);
 
     function esc(s) {
         return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -137,6 +153,8 @@
             else if (s === 'collecting') place = W('widget.detailCollecting', 'courier collecting');
             else if (s === 'delivered') place = W('widget.detailDoor', 'at your front door');
             else place = countText(o);
+        } else if (s === 'ready' && o.code) {
+            place = W('widget.code', 'Code %s', o.code); // the actionable bit once it's ready - more useful than the locker name here
         } else {
             place = o.lockerLabel ? esc(o.lockerLabel) : countText(o);
         }
@@ -159,9 +177,16 @@
 
         var s = st(top);
         if (top.status === 'ready') {
+            // Sized to the actual code length so a longer code (or a narrower real widget box
+            // than assumed) shrinks instead of running past the card's edge.
+            var codeStyle = '';
+            if (top.code) {
+                var len = String(top.code).length || 6;
+                codeStyle = ' style="font-size:' + Math.min(1.9, 8.4 / (len * 0.7)) + 'rem"';
+            }
             return header('<span class="pill ready">' + label(top) + '</span>') +
                 '<div class="place">' + icon('i-box') + '&nbsp;' + (top.lockerLabel ? kind(top) + ' · ' + esc(top.lockerLabel) : kind(top)) + '</div>' +
-                (top.code ? '<div class="code"><small>' + W('widget.pickupCode', 'Pickup code') + '</small><b>' + esc(top.code) + '</b></div>' : '');
+                (top.code ? '<div class="code"><small>' + W('widget.pickupCode', 'Pickup code') + '</small><b' + codeStyle + '>' + esc(top.code) + '</b></div>' : '');
         }
         if (top.status === 'delivered') {
             return header(data.active > 0 ? '<span class="badge">' + data.active + '</span>' : '') +
@@ -183,9 +208,9 @@
         if (!orders.length) return header(right) + emptyState();
         var rows = orders.map(function (o) {
             var s = st(o);
-            var pill = (o.status === 'ready' && o.code)
-                ? '<span class="pill ready">' + W('widget.code', 'Code %s', o.code) + '</span>'
-                : '<span class="pill ' + s.pill + '">' + pillLabel(o) + '</span>';
+            // The pickup code goes in the sub-line (subLine, above) once an order is ready - it's
+            // too wide for this pill, which stays short so it never crowds out the item name.
+            var pill = '<span class="pill ' + s.pill + '">' + pillLabel(o) + '</span>';
             return '<div class="orow"><div class="oi ' + s.tone + '">' + icon(s.ico) + '</div>' +
                 '<div class="ot"><b>' + itemsLabel(o) + '</b><small>' + subLine(o) + '</small></div>' + pill + '</div>';
         }).join('');
@@ -227,7 +252,9 @@
         var m = e.data;
         if (!m || m.type !== 'sd-phone:widget') return;
         if (m.size === 'sm' || m.size === 'md') size = m.size;
-        if (m.height) { height = m.height; scale(); }
+        if (m.height) height = m.height;
+        if (m.width) width = m.width;
+        if (m.height || m.width) scale();
         render();
         refresh();
     });
