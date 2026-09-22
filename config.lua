@@ -102,6 +102,11 @@ Config = {
         --   up to s units -> small box, up to m -> medium, up to l -> large, above that -> extra large.
         -- The order is given a free door whose fixed box (see lockerBoxOffsets) matches that size.
         boxSizeMaxUnits = { s = 2, m = 4, l = 7 },
+        -- true (default): "Take Parcel" gives ONE pp_parcel_s/m/l/xl item (matching the order's box
+        -- size) holding the order's contents in its metadata; using that item unpacks the real items
+        -- into the inventory and removes the box. false: skip the box and give the order's items
+        -- directly, like before this option existed.
+        giveBoxItem = true,
     },
 
     -- Played on the player when they use "Take Parcel" - at the locker wall (the box comes off the

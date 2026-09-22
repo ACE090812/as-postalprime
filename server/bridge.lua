@@ -167,6 +167,49 @@ function PPBridge.removeItem(source, item, count)
     return false
 end
 
+-- Registers a "use this item" handler that works the same regardless of inventory.
+-- handler(source, metadata, removeSelf) is called with whatever plain table was stored on the item
+-- when it was given out, plus a removeSelf() that removes exactly the slot/copy that was used - never
+-- "any item with this name", which matters for a non-stacking item where the player might be holding
+-- several copies with different metadata at once (e.g. two parcels with different contents).
+-- ox_inventory: matches the pattern already proven working in as-printer's own 'printed_document'
+-- item (server/api.lua) - items.lua must point the item at `server = { export = 'as-postalprime.<itemName>' }`.
+-- qb-inventory (and qbx, which also commonly runs qb-inventory): goes through the FRAMEWORK core's
+-- CreateUseableItem, not the inventory resource itself, so this needs ensureCore() first.
+function PPBridge.registerUsable(itemName, handler)
+    if inventory == 'ox_inventory' then
+        exports(itemName, function(event, item, inv, slot)
+            if event ~= 'usingItem' then return end
+            local src = inv and inv.id
+            if type(src) ~= 'number' then return end
+            local s = exports.ox_inventory:GetSlot(src, slot)
+            local function removeSelf()
+                pcall(function() exports.ox_inventory:RemoveItem(src, itemName, 1, nil, slot) end)
+            end
+            handler(src, (s and s.metadata) or {}, removeSelf)
+        end)
+        return
+    end
+
+    ensureCore()
+    local function qbHandler(source, item)
+        local function removeSelf()
+            pcall(function() exports['qb-inventory']:RemoveItem(source, itemName, 1, item and item.slot) end)
+        end
+        handler(source, (item and item.info) or {}, removeSelf)
+    end
+    if framework == 'qb' and QBCore then
+        QBCore.Functions.CreateUseableItem(itemName, qbHandler)
+    elseif framework == 'qbx' and qbxExport then
+        local ok = pcall(function() qbxExport:CreateUseableItem(itemName, qbHandler) end)
+        if not ok then
+            print(('[as-postalprime] could not register usable item "%s" on qbx_core - if you run ox_inventory with qbx, set Config.inventory to "ox_inventory" instead of leaving it on qb-inventory\'s path.'):format(itemName))
+        end
+    else
+        print(('[as-postalprime] could not register usable item "%s": no supported framework/inventory combination detected (framework=%s, inventory=%s).'):format(itemName, tostring(framework), tostring(inventory)))
+    end
+end
+
 -- The player's framework job name (e.g. 'postalprime') or nil. Used by the courier job.
 function PPBridge.getJob(source)
     ensureCore()

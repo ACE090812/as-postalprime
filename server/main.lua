@@ -739,10 +739,18 @@ AddEventHandler('as-postalprime:takeBox', function(lockerId, doorSlot)
         return
     end
 
-    for _, it in ipairs(order.items) do
-        local entry = findCatalogItem(it.id)
-        local itemName = entry and entry.item or it.item or it.id
-        PPBridge.addItem(source, itemName, it.qty, it.metadata)
+    if (Config.lockerWall.giveBoxItem ~= false) then
+        -- One sealed box, matching whichever size door/box it was assigned. The box holds the real
+        -- items in its own metadata; PPBridge.registerUsable('pp_parcel_' .. size, ...) below unpacks
+        -- them the moment the player uses it.
+        local boxItem = 'pp_parcel_' .. (order.boxSize or orderBoxSize(order))
+        PPBridge.addItem(source, boxItem, 1, { orderId = order.id, items = order.items })
+    else
+        for _, it in ipairs(order.items) do
+            local entry = findCatalogItem(it.id)
+            local itemName = entry and entry.item or it.item or it.id
+            PPBridge.addItem(source, itemName, it.qty, it.metadata)
+        end
     end
 
     order.collected = true
@@ -761,6 +769,33 @@ AddEventHandler('as-postalprime:takeBox', function(lockerId, doorSlot)
     PP.notifyOrder(source, order, T('notif.collected.title'),
         T('notif.collected.body', order.lockerLabel))
 end)
+
+-- Opening a pp_parcel_s/m/l/xl box: unpack the real items from its metadata, remove the (one) box
+-- item itself, then let the player know. Registered for all four sizes since they all behave the
+-- same way - only the box's own weight/label differs.
+local function openParcelBox(source, meta)
+    if type(meta) ~= 'table' or type(meta.items) ~= 'table' then
+        print(('[as-postalprime] a pp_parcel box was used by source %s with no/garbled metadata - nothing to unpack (were older boxes given out before giveBoxItem was turned on?).'):format(tostring(source)))
+        return
+    end
+    for _, it in ipairs(meta.items) do
+        local entry = findCatalogItem(it.id)
+        local itemName = entry and entry.item or it.item or it.id
+        PPBridge.addItem(source, itemName, it.qty, it.metadata)
+    end
+    TriggerClientEvent('as-postalprime:toast', source, {
+        title = T('app.name'), description = T('toast.parcelOpened'), type = 'success',
+    })
+end
+
+for _, size in ipairs({ 's', 'm', 'l', 'xl' }) do
+    PPBridge.registerUsable('pp_parcel_' .. size, function(source, meta, removeSelf)
+        openParcelBox(source, meta)
+        -- Removes exactly the copy that was used, not just any pp_parcel_<size> the player is
+        -- carrying - important if they're holding two boxes of the same size with different contents.
+        if removeSelf then removeSelf() else PPBridge.removeItem(source, 'pp_parcel_' .. size, 1) end
+    end)
+end
 
 lib.callback.register('as-postalprime:getReviews', function(source, data)
     local cid = track(source)

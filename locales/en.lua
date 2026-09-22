@@ -41,6 +41,7 @@ Locales['en'] = {
     ['toast.orderCancelled'] = 'Order cancelled and refunded.',
     ['toast.orderCollected'] = 'Order collected!',
     ['toast.parcelCollected'] = 'Parcel collected!',
+    ['toast.parcelOpened'] = 'Parcel opened - items added to your inventory.',
 
     -- App and orders
     ['app.name'] = 'Postal Prime',
