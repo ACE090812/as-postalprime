@@ -80,16 +80,20 @@ whenever you like; same filenames, just replace the files.
 ### ox_inventory (`data/items.lua`)
 
 ```lua
-['pp_parcel_s']  = { label = 'Small Parcel',       weight = 500,  stack = false, close = true },
-['pp_parcel_m']  = { label = 'Medium Parcel',      weight = 1500, stack = false, close = true },
-['pp_parcel_l']  = { label = 'Large Parcel',       weight = 3000, stack = false, close = true },
-['pp_parcel_xl'] = { label = 'Extra Large Parcel', weight = 5000, stack = false, close = true },
+['pp_parcel_s']  = { label = 'Small Parcel',       weight = 500,  stack = false, close = true, description = 'A sealed Postal Prime parcel. Use it to open and unpack your order.', server = { export = 'as-postalprime.pp_parcel_s' } },
+['pp_parcel_m']  = { label = 'Medium Parcel',      weight = 1500, stack = false, close = true, description = 'A sealed Postal Prime parcel. Use it to open and unpack your order.', server = { export = 'as-postalprime.pp_parcel_m' } },
+['pp_parcel_l']  = { label = 'Large Parcel',       weight = 3000, stack = false, close = true, description = 'A sealed Postal Prime parcel. Use it to open and unpack your order.', server = { export = 'as-postalprime.pp_parcel_l' } },
+['pp_parcel_xl'] = { label = 'Extra Large Parcel', weight = 5000, stack = false, close = true, description = 'A sealed Postal Prime parcel. Use it to open and unpack your order.', server = { export = 'as-postalprime.pp_parcel_xl' } },
 ```
 
 `stack = false` matters - each box's contents are unique to it (its metadata), so two different
-orders' boxes must never merge into one inventory stack. Nothing else to wire up: `PPBridge.
-registerParcelOpener` (`server/bridge.lua`) calls `exports.ox_inventory:registerUsableItem` for
-each of these on its own at startup - no `client` export needed in the item definition.
+orders' boxes must never merge into one inventory stack. `server.export` points each parcel at an
+`as-postalprime` server export of the same name (`pp_parcel_s`, `pp_parcel_m`, `pp_parcel_l`,
+`pp_parcel_xl`) - ox_inventory calls it with the `usingItem`/`usedItem` events when a player uses
+the box, and that's what unpacks the contents and removes the parcel. No `client` export needed.
+
+Copy the icons from `icons/` into `ox_inventory/web/images/` - ox_inventory picks them up by item
+name automatically.
 
 ### qb-inventory (`qb-core`'s shared items)
 
