@@ -114,11 +114,15 @@ Config = {
     },
 
     -- Home delivery: pick "Home" at checkout and a courier van drops the parcel at the front door of one
-    -- of your properties (owned, rented or keyholder). Works with nolag_properties and qbx_properties.
+    -- of your properties (owned, rented or keyholder). Works with nolag_properties, qbx_properties,
+    -- brutal_housing (v2) and rcore_housing.
     home = {
         enabled = true,
-        -- 'auto' = every supported housing script that's started, or force 'nolag_properties' / 'qbx_properties'.
-        housing = 'qbx_properties',
+        -- 'auto' = every supported housing script that's started, or force one:
+        -- 'nolag_properties' / 'qbx_properties' / 'brutal_housing' / 'rcore_housing'.
+        -- Set to 'auto' so whichever one you actually have running gets picked up; only force a single
+        -- name if you run more than one housing script side by side and want just one of them used here.
+        housing = 'auto',
         -- Delivery charge for home delivery - used INSTEAD of the normal delivery fee (plus.deliveryFee). Free with Postal Prime Plus.
         fee = 15,
         -- Travel time added to normal prep time, from this depot to the property's door.

@@ -3,11 +3,13 @@
 -- PPHousing.resolve(cid, key) -> one of those (or nil) - used at checkout so the client can never
 --                                pick an address it has no access to.
 --
--- A property is deliverable when the character OWNS it, RENTS it (nolag), or is a KEYHOLDER on it.
--- Supports nolag_properties and qbx_properties; with Config.home.housing = 'auto' every supported
--- script that is started is queried and the results are merged (keys are prefixed "nolag:" / "qbx:").
--- Both read straight from the housing script's own database tables via oxmysql, so it works whether
--- or not the property is currently loaded/spawned.
+-- A property is deliverable when the character OWNS it, RENTS it (nolag), or is a KEYHOLDER on it -
+-- except brutal_housing, where only OWNERSHIP can be checked from the database (see the note above
+-- listBrutal below for why). Supports nolag_properties, qbx_properties, brutal_housing (v2) and
+-- rcore_housing; with Config.home.housing = 'auto' every supported script that is started is queried
+-- and the results are merged (keys are prefixed "nolag:" / "qbx:" / "brutal:" / "rcore:"). All of them
+-- read straight from the housing script's own database tables via oxmysql, so it works whether or not
+-- the property is currently loaded/spawned.
 
 PPHousing = {}
 local warned = {}
@@ -117,6 +119,108 @@ local function listQbx(cid)
     return out
 end
 
+-- ─── brutal_housing (v2) ─────────────────────────────────────────────────────
+-- Confirmed against a real export of this server's `brutal_housing` table: `owner` holds the same
+-- ESX identifier format used everywhere else on this server (e.g. `owned_vehicles.owner`), so an
+-- owner match works exactly like the nolag/qbx drivers above.
+-- `keyid`, however, is NOT a list of holder identifiers - real rows show values like `Vjybl-9e^Zfp`
+-- and `QdtaLl6RHqm5`, i.e. a random per-property lock/key code. Brutal Housing evidently tracks who
+-- currently holds a key via a physical key item in inventory (matched against this code at the door),
+-- not via a stored list of identifiers - so there is no SQL-only way to tell "this player is a
+-- keyholder on this property" from this table alone. Practical effect: home delivery to a
+-- brutal_housing address works for the OWNER, but not for a renter/keyholder who isn't the owner on
+-- record. If Brutal ever adds a proper renter/keyholder identifier column, tell me the column name
+-- and I'll wire it in.
+local function listBrutal(cid)
+    local rows
+    local ok, err = pcall(function()
+        rows = MySQL.query.await([[
+            SELECT id, label, address, coords, owner
+            FROM brutal_housing
+            WHERE owner = ?
+        ]], { cid })
+    end)
+    if not ok then
+        if not warned.brutal then
+            warned.brutal = true
+            print(('[as-postalprime] brutal_housing lookup failed (shown once; is this really brutal_housing v2? set Config.home.housing to your housing script): %s'):format(tostring(err)))
+        end
+        return {}
+    end
+
+    local out = {}
+    for _, r in ipairs(rows or {}) do
+        local coords = toPoint(r.coords)
+        if coords then
+            local label = (r.label and r.label ~= '') and r.label or r.address or T('housing.property', r.id)
+            out[#out + 1] = {
+                key = 'brutal:' .. r.id,
+                label = label,
+                address = r.address,
+                coords = coords,
+            }
+        end
+    end
+    return out
+end
+
+-- ─── rcore_housing ───────────────────────────────────────────────────────────
+-- Confirmed straight from rcore_housing's own bridge source (modules/bridge/db/server.lua, which
+-- ships unescrowed): `rcore_housing_properties` has `owner` and `tenant` as plain identifier columns,
+-- and keyholders live in a separate, normal `rcore_housing_accesses` (property_id, identifier,
+-- permissions) table - a real join, not a guessed blob format, so all three access types work.
+-- `coords` is stored wrapped in a one-element JSON array (`db.RegisterProperty` does
+-- `originModel.coords = { originModel.coords }` before insert), so it's unwrapped below before
+-- being run through the normal {x,y,z,w} decoder. A unit that belongs to a building
+-- (`parent_building_id` set) has its own `coords` cleared at creation and is meant to use the
+-- building's entry point instead, so the query joins the parent row and falls back to its coords.
+local function unwrapCoords(raw)
+    local v = decode(raw) or (type(raw) == 'table' and raw or nil)
+    if type(v) ~= 'table' then return nil end
+    if type(v[1]) == 'table' then v = v[1] end
+    return toPoint(v)
+end
+
+local function listRcore(cid)
+    local rows
+    local ok, err = pcall(function()
+        rows = MySQL.query.await([[
+            SELECT p.id, p.name, p.address, p.coords AS pcoords, b.coords AS bcoords
+            FROM rcore_housing_properties p
+            LEFT JOIN rcore_housing_properties b ON b.id = p.parent_building_id
+            WHERE (p.is_building = 0 OR p.is_building IS NULL)
+              AND (p.is_hidden = 0 OR p.is_hidden IS NULL)
+              AND (
+                    p.owner = ?
+                 OR p.tenant = ?
+                 OR p.id IN (SELECT property_id FROM rcore_housing_accesses WHERE identifier = ?)
+              )
+        ]], { cid, cid, cid })
+    end)
+    if not ok then
+        if not warned.rcore then
+            warned.rcore = true
+            print(('[as-postalprime] rcore_housing lookup failed (shown once; is this really rcore_housing? set Config.home.housing to your housing script): %s'):format(tostring(err)))
+        end
+        return {}
+    end
+
+    local out = {}
+    for _, r in ipairs(rows or {}) do
+        local coords = unwrapCoords(r.pcoords) or unwrapCoords(r.bcoords)
+        if coords then
+            local label = (r.name and r.name ~= '' and r.name ~= 'Unnamed') and r.name or r.address or T('housing.property', r.id)
+            out[#out + 1] = {
+                key = 'rcore:' .. r.id,
+                label = label,
+                address = r.address,
+                coords = coords,
+            }
+        end
+    end
+    return out
+end
+
 -- ─── public API ──────────────────────────────────────────────────────────────
 
 local function enabledScripts()
@@ -127,6 +231,12 @@ local function enabledScripts()
     end
     if (want == 'auto' or want == 'qbx_properties') and GetResourceState('qbx_properties') == 'started' then
         out[#out + 1] = listQbx
+    end
+    if (want == 'auto' or want == 'brutal_housing') and GetResourceState('brutal_housing') == 'started' then
+        out[#out + 1] = listBrutal
+    end
+    if (want == 'auto' or want == 'rcore_housing') and GetResourceState('rcore_housing') == 'started' then
+        out[#out + 1] = listRcore
     end
     return out
 end
