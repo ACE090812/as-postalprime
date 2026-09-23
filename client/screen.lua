@@ -309,14 +309,27 @@ CreateThread(function()
     if not cfg.enabled then return end
 
     local size = cfg.size or 1024
-    dui = CreateDui(('nui://%s/ui/screen.html'):format(RES), size, size)
 
-    local deadline = GetGameTimer() + 10000
-    while not IsDuiAvailable(dui) and GetGameTimer() < deadline do Wait(50) end
-    if not IsDuiAvailable(dui) then
-        print('[as-postalprime] locker screen DUI failed to load - falling back to the NUI keypad overlay')
-        DestroyDui(dui)
+    -- On a full SERVER restart every player reconnects and streams a pile of resources' NUI pages at
+    -- once, so this DUI can easily take longer than a normal single-player 10s budget to report
+    -- available - it used to give up after one 10s try and never look again, permanently falling back
+    -- with no camera/UI at all (this is what "works after a manual /restart as-postalprime later, but
+    -- not right after a full server reboot" was: by the time you restart it by hand, everything else
+    -- has finished loading and the DUI comes up fast). Now it retries a few times, recreating the DUI
+    -- each attempt, before actually giving up.
+    local attempt = 0
+    while attempt < 5 do
+        attempt = attempt + 1
+        dui = CreateDui(('nui://%s/ui/screen.html'):format(RES), size, size)
+        local deadline = GetGameTimer() + 15000
+        while not IsDuiAvailable(dui) and GetGameTimer() < deadline do Wait(50) end
+        if IsDuiAvailable(dui) then break end
+        print(('[as-postalprime] locker screen DUI not available yet (attempt %d/5) - retrying'):format(attempt))
+        if dui then DestroyDui(dui) end
         dui = nil
+    end
+    if not dui then
+        print('[as-postalprime] locker screen DUI failed to load after 5 attempts - falling back to the NUI keypad overlay')
         return
     end
     Wait(300)
