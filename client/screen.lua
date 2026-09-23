@@ -218,6 +218,22 @@ function PPScreen.open(lockerId, label, prop)
     SendDuiMessage(dui, json.encode(initMessage()))
     push() -- send the real ('entry') view immediately; don't wait for the first mouse move/dirty tick
 
+    -- SendDuiMessage has no delivery acknowledgment at all - a DUI can't call back into Lua (no NUI
+    -- callbacks), so if that very first message is ever silently dropped by the game's embedded
+    -- browser (a rare but real CEF/DUI timing quirk, seemingly more likely right after a fresh full
+    -- server restart), NOTHING errors anywhere: the idle art (plain HTML, not JS-dependent) just stays
+    -- exactly as it was, the camera still zooms in fine (that part is pure Lua), and no print in this
+    -- file can ever see it happen. Resending the real view a few times over the next second is cheap
+    -- insurance against exactly that "zooms in, no UI, nothing logs" symptom.
+    CreateThread(function()
+        for _, delay in ipairs({ 100, 300, 600, 1000 }) do
+            Wait(delay)
+            if session ~= s then return end
+            SendDuiMessage(dui, json.encode(initMessage()))
+            push()
+        end
+    end)
+
     CreateThread(function()
         local sens = cfg.sensitivity or 0.6
         local maxDist = cfg.maxDistance or 3.5
