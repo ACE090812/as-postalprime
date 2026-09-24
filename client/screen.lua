@@ -332,27 +332,51 @@ CreateThread(function()
     -- with no camera/UI at all (this is what "works after a manual /restart as-postalprime later, but
     -- not right after a full server reboot" was: by the time you restart it by hand, everything else
     -- has finished loading and the DUI comes up fast). Now it retries a few times, recreating the DUI
-    -- each attempt, before actually giving up.
+    -- each attempt, before actually giving up. Attempt/timeout budget scales with resource count -
+    -- a server with a few hundred resources genuinely needs longer than a nearly-empty one.
+    local resCount = GetNumResources and GetNumResources() or 0
+    local maxAttempts = resCount >= 300 and 10 or 5
+    local perAttemptMs = resCount >= 300 and 20000 or 15000
+
     local attempt = 0
-    while attempt < 5 do
+    local handle = nil
+    while attempt < maxAttempts do
         attempt = attempt + 1
         dui = CreateDui(('nui://%s/ui/screen.html'):format(RES), size, size)
-        local deadline = GetGameTimer() + 15000
+        local deadline = GetGameTimer() + perAttemptMs
         while not IsDuiAvailable(dui) and GetGameTimer() < deadline do Wait(50) end
-        if IsDuiAvailable(dui) then break end
-        print(('[as-postalprime] locker screen DUI not available yet (attempt %d/5) - retrying'):format(attempt))
+
+        if IsDuiAvailable(dui) then
+            -- IsDuiAvailable can flip true slightly before GetDuiHandle actually returns a usable
+            -- handle when the client is under heavy load from many resources streaming/initialising
+            -- at once - CreateRuntimeTextureFromDuiHandle then "succeeds" against a 0/invalid handle
+            -- and the screen texture is left permanently blank, with duiReady already set true so
+            -- nothing here ever notices or retries. This is exactly the "fine on a low-resource
+            -- server, breaks above ~300 resources until the script is restarted by hand" symptom -
+            -- so wait for a real handle too, not just IsDuiAvailable, before trusting this attempt.
+            local handleDeadline = GetGameTimer() + 5000
+            repeat
+                handle = GetDuiHandle(dui)
+                if not handle or handle == 0 then Wait(50) end
+            until (handle and handle ~= 0) or GetGameTimer() > handleDeadline
+            if handle and handle ~= 0 then break end
+            print(('[as-postalprime] locker screen DUI became available but GetDuiHandle stayed invalid (attempt %d/%d) - retrying'):format(attempt, maxAttempts))
+        else
+            print(('[as-postalprime] locker screen DUI not available yet (attempt %d/%d) - retrying'):format(attempt, maxAttempts))
+        end
+
         if dui then DestroyDui(dui) end
-        dui = nil
+        dui, handle = nil, nil
     end
-    if not dui then
-        print('[as-postalprime] locker screen DUI failed to load after 5 attempts - falling back to the NUI keypad overlay')
+    if not dui or not handle then
+        print(('[as-postalprime] locker screen DUI failed to load after %d attempts - falling back to the NUI keypad overlay'):format(maxAttempts))
         return
     end
     Wait(300)
 
     local txdName = ('as_pp_screen_%d'):format(GetGameTimer())
     local txd = CreateRuntimeTxd(txdName)
-    CreateRuntimeTextureFromDuiHandle(txd, 'screen', GetDuiHandle(dui))
+    CreateRuntimeTextureFromDuiHandle(txd, 'screen', handle)
     AddReplaceTexture(cfg.txd or 'aslocker', cfg.txn or 'aslocker_diffuse_2', txdName, 'screen')
 
     SendDuiMessage(dui, json.encode(initMessage()))
