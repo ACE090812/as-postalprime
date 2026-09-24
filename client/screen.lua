@@ -326,17 +326,22 @@ CreateThread(function()
 
     local size = cfg.size or 1024
 
-    -- On a full SERVER restart every player reconnects and streams a pile of resources' NUI pages at
-    -- once, so this DUI can easily take longer than a normal single-player 10s budget to report
-    -- available - it used to give up after one 10s try and never look again, permanently falling back
-    -- with no camera/UI at all (this is what "works after a manual /restart as-postalprime later, but
-    -- not right after a full server reboot" was: by the time you restart it by hand, everything else
-    -- has finished loading and the DUI comes up fast). Now it retries a few times, recreating the DUI
-    -- each attempt, before actually giving up. Attempt/timeout budget scales with resource count -
-    -- a server with a few hundred resources genuinely needs longer than a nearly-empty one.
-    local resCount = GetNumResources and GetNumResources() or 0
-    local maxAttempts = resCount >= 300 and 10 or 5
-    local perAttemptMs = resCount >= 300 and 20000 or 15000
+    -- This whole thread starts the moment as-postalprime activates on the client, which on a full
+    -- SERVER restart is right in the middle of every reconnecting client streaming/starting a pile of
+    -- OTHER resources' NUI pages at once - the client's embedded browser (CEF) process is saturated,
+    -- so a DUI created right now can take far longer than any fixed handful of retries covers. This is
+    -- exactly why "works fine after manually restarting just this script later" was true: by then every
+    -- other resource has long since finished its own NUI/DUI startup work and CEF is idle again, so the
+    -- very next attempt succeeds instantly. Attempting more retries sooner doesn't fix that - it's
+    -- still fighting the same storm. So: wait for the player to actually be active in the world (past
+    -- the worst of the streaming storm), give everything else a bit longer to settle, THEN start
+    -- trying - with a very generous, effectively "keep trying until it works" retry budget from there,
+    -- since a slow busy server should eventually succeed rather than permanently give up.
+    while not NetworkIsPlayerActive(PlayerId()) do Wait(200) end
+    Wait(10000)
+
+    local maxAttempts = 40
+    local perAttemptMs = 20000
 
     local attempt = 0
     local handle = nil
