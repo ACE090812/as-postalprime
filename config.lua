@@ -127,7 +127,7 @@ Config = {
         -- 'nolag_properties' / 'qbx_properties' / 'brutal_housing' / 'rcore_housing' / 'qb-houses' / 'ps-housing'.
         -- Set to 'auto' so whichever one you actually have running gets picked up; only force a single
         -- name if you run more than one housing script side by side and want just one of them used here.
-        housing = 'qbx_properties',
+        housing = 'auto',
         -- Delivery charge for home delivery - used INSTEAD of the normal delivery fee (plus.deliveryFee). Free with Postal Prime Plus.
         fee = 15,
         -- Travel time added to normal prep time, from this depot to the property's door.
