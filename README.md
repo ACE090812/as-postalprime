@@ -3,15 +3,16 @@
 Postal Prime: a standalone Amazon-style shopping app for sd-phone. Registers itself into the
 real phone through `exports['sd-phone']:addCustomApp` - no sd-phone core files touched. Players
 browse a general goods catalog, check out and pick a pickup locker, then physically collect the
-order from that locker with `ox_target` or `qb-target` and a pickup code shown in the app.
+order from that locker with `as-interact`, `ox_target` or `qb-target` and a pickup code shown in the app.
 
 ## Before you start it
 
 1. **Ensure order**: this resource must start *after* `ox_lib`, `oxmysql`, `sd-phone`,
-   **`pp_lockerprops`**, and whichever of **`ox_target`/`qb-target`** you use (and after your
-   inventory/framework) in `server.cfg`. Whichever target system you use isn't listed in this
-   resource's own `dependencies` (FiveM can't express "either one of these"), so make sure it's
-   actually started yourself.
+   **`pp_lockerprops`**, and whichever of **`as-interact`/`ox_target`/`qb-target`** you use
+   (and after your inventory/framework) in `server.cfg`. Whichever target system you use isn't
+   listed in this resource's own `dependencies` (FiveM can't express "either one of these"), so
+   make sure it's actually started yourself. `as-interact` itself also needs `ox_lib` started
+   before it.
 2. **Create the catalog items** in your inventory's own item config - this resource does not
    create item definitions, only sells and hands them out. See "Item definitions" below for the
    full shipped set (`pp_earbuds`, `pp_phonecase`, etc, plus `money` if you use item-based payment).
@@ -21,8 +22,9 @@ order from that locker with `ox_target` or `qb-target` and a pickup code shown i
    `pp_lockerprops` resource (see "Locker wall prop" below) - it just needs to be started.
 4. **Check `Config.framework` / `Config.inventory`** - `'auto'` detects qbx_core/qb-core/es_extended
    and ox_inventory/qb-inventory. Set explicitly if you run something auto-detect might get wrong.
-   **Check `Config.target`** the same way - `'auto'` detects ox_target/qb-target (whichever is
-   actually started; ox_target wins if somehow both are), or set it explicitly.
+   **Check `Config.target`** the same way - `'auto'` detects as-interact/ox_target/qb-target
+   (whichever is actually started; as-interact wins if somehow more than one is), or set it
+   explicitly.
 5. **Check `Config.payment.mode`** - `'account'` (cash balance) or `'item'` (physical cash item).
 6. **Tune `Config.order`** - `prepSeconds` (how long "preparing" lasts before it's ready to
    collect), `expireSecondsAfterReady` (how long an uncollected order waits before it's cancelled
@@ -135,16 +137,19 @@ false` in `config.lua` and this resource removes it manually instead.
 6. **Expiry & refund** - an uncollected order auto-cancels `Config.order.expireSecondsAfterReady`
    after becoming ready, and is refunded in full (it was already paid for at checkout).
 
-## Target system (ox_target / qb-target)
+## Target system (as-interact / ox_target / qb-target)
 
-`Config.target` picks how the locker wall's interactions ("Open Postal Prime Locker", "Take
-Parcel") are shown - `'ox_target'`, `'qb-target'`, or `'auto'` (default) to detect whichever one
-is actually started. All of `client/main.lua` goes through a small bridge in `client/target.lua`
-(`PPTarget.addEntity`/`addSphereZone`/`removeEntity`/`removeZone`) instead of calling either
-resource's export directly, so the rest of the code doesn't care which one is running. Whichever
-one you use has to actually be started before `as-postalprime` in `server.cfg` - it isn't (and
-can't be) listed in this resource's own `dependencies`, since FiveM has no way to express "either
-one of these two."
+`Config.target` picks how the locker wall's, courier van's and "Take Parcel"/"Place Parcel"
+interactions are shown - `'as-interact'`, `'ox_target'`, `'qb-target'`, or `'auto'` (default)
+to detect whichever one is actually started (preferring as-interact, then ox_target, then
+qb-target if more than one happens to be). All of `client/main.lua`, `client/home.lua` and
+`client/courier.lua` go through a small bridge in `client/target.lua`
+(`PPTarget.addEntity`/`addSphereZone`/`removeEntity`/`removeZone`) instead of calling any of
+those resources' exports directly, so the rest of the code doesn't care which one is running.
+Whichever one you use has to actually be started before `as-postalprime` in `server.cfg` - it
+isn't (and can't be) listed in this resource's own `dependencies`, since FiveM has no way to
+express "one of these three." If you use `as-interact`, it also needs `ox_lib` started before
+it (its own requirement, not this resource's).
 
 ## Locker wall prop
 

@@ -4,7 +4,7 @@ lua54 'yes'
 
 name 'as-postalprime'
 author 'you'
-description 'Postal Prime - standalone Amazon-style shopping app for sd-phone. Buy from a general goods catalog, pick a pickup locker at checkout, collect from a locker wall with ox_target or qb-target + a pickup code. No sd-phone core files touched.'
+description 'Postal Prime - standalone Amazon-style shopping app for sd-phone. Buy from a general goods catalog, pick a pickup locker at checkout, collect from a locker wall with as-interact, ox_target or qb-target + a pickup code. No sd-phone core files touched.'
 version '1.0.0'
 
 shared_script '@ox_lib/init.lua'
@@ -45,9 +45,10 @@ files { 'ui/**/*' }
 -- oxmysql must also be started first - orders/plus/reviews are stored in your database now,
 -- not a JSON file (see server/store.lua).
 --
--- NOTE: this resource also needs ONE of ox_target or qb-target started before it (see
--- Config.target in config.lua) - not listed below since `dependencies` can't express "either
+-- NOTE: this resource also needs ONE of as-interact, ox_target or qb-target started before it
+-- (see Config.target in config.lua) - not listed below since `dependencies` can't express "either
 -- one of these", so make sure whichever one you use is started first in server.cfg yourself.
+-- (as-interact itself also needs ox_lib started before it, if that's the one you use.)
 dependencies {
     'ox_lib',
     'oxmysql',

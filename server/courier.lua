@@ -204,8 +204,8 @@ end
 -- ─── keys / rental vehicle ───────────────────────────────────────────────────
 
 local function giveKey(src, r)
-    if GetResourceState('acestudios_vehiclekeys') == 'started' then
-        local ok, res = pcall(function() return exports.acestudios_vehiclekeys:GiveKey(src, r.plate, r.def.label) end)
+    if GetResourceState('as-vehiclekeys') == 'started' then
+        local ok, res = pcall(function() return exports['as-vehiclekeys']:GiveKey(src, r.plate, r.def.label) end)
         return ok and res ~= false
     end
     if GetResourceState('qbx_vehiclekeys') == 'started' and r.entity and DoesEntityExist(r.entity) then
@@ -217,8 +217,8 @@ end
 
 local function takeKey(src, r)
     if not src then return end
-    if GetResourceState('acestudios_vehiclekeys') == 'started' then
-        pcall(function() exports.acestudios_vehiclekeys:TakeKey(src, r.plate) end)
+    if GetResourceState('as-vehiclekeys') == 'started' then
+        pcall(function() exports['as-vehiclekeys']:TakeKey(src, r.plate) end)
     end
 end
 

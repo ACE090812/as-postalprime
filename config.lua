@@ -10,10 +10,11 @@ Config = {
     -- and (if payment.mode = 'item') how the cash item is read/removed.
     inventory = 'auto',
 
-    -- Which targeting resource opens the locker wall's interactions. 'auto' detects whichever of
-    -- ox_target / qb-target is actually started (ox_target wins if somehow both are). Set this
-    -- explicitly only if you run both and auto-detect picks the wrong one.
-    target = 'auto',
+    -- Which resource opens the locker wall's/courier's interactions. 'auto' detects whichever of
+    -- as-interact / ox_target / qb-target is actually started (in that preference order if
+    -- somehow more than one is). Set this explicitly only if you run more than one and auto-detect
+    -- picks the wrong one.
+    target = 'as-interact',
 
     app = {
         identifier  = 'as-postalprime',
@@ -74,8 +75,8 @@ Config = {
     },
 
     -- Preset pickup lockers - these should match real postal-locker PROPS you've already placed
-    -- around the map. This resource does not spawn or model the prop itself, only the ox_target
-    -- interaction zone at its coordinates - point `coords`/`heading` at wherever you put each prop.
+    -- around the map. This resource does not spawn or model the prop itself, only the target/interaction
+    -- point at its coordinates - point `coords`/`heading` at wherever you put each prop.
     -- The five below are your own actual locker placements (pulled from your locker prop setup).
     lockers = {
         { id = 'greenwich',    label = 'Greenwich Locker',     coords = vector3(170.9201, -1001.5137, 28.3388),  heading = 342.6835 },
@@ -127,7 +128,7 @@ Config = {
         -- 'nolag_properties' / 'qbx_properties' / 'brutal_housing' / 'rcore_housing' / 'qb-houses' / 'ps-housing'.
         -- Set to 'auto' so whichever one you actually have running gets picked up; only force a single
         -- name if you run more than one housing script side by side and want just one of them used here.
-        housing = 'auto',
+        housing = 'qbx_properties',
         -- Delivery charge for home delivery - used INSTEAD of the normal delivery fee (plus.deliveryFee). Free with Postal Prime Plus.
         fee = 15,
         -- Travel time added to normal prep time, from this depot to the property's door.
@@ -143,7 +144,7 @@ Config = {
         animateRange = 250.0,
         spawnDistance = 160.0,     -- how far out along the road the van starts
         despawnAfterMs = 20000,    -- how long the van drives off before it's removed
-        takeDistance = 2.5,        -- ox_target / qb-target distance to the box
+        takeDistance = 2.5,        -- target/interaction distance to the box
         takeCheckDistance = 10.0,  -- server-side sanity check when taking it
     },
 
@@ -220,9 +221,10 @@ Config = {
         -- An uncollected order auto-cancels this long after becoming ready, and is fully refunded
         -- (money and/or items handed back) since it was already paid for at checkout.
         expireSecondsAfterReady = 1800,
-        -- How close you need to be to a locker's coords for its ox_target option to appear.
+        -- How close you need to be to a locker's coords for its target/interaction option to appear.
         targetDistance = 2.0,
-        -- Size of the ox_target box zone placed at each locker (width, length, height).
+        -- Size of the ox_target box zone placed at each locker (width, length, height). Unused by
+        -- as-interact/qb-target, kept for reference only.
         zoneSize = vector3(1.0, 1.0, 2.0),
         -- How many past orders (collected/expired) to keep in a player's order history.
         historyLimit = 20,

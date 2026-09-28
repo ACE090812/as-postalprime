@@ -127,7 +127,7 @@ end)
 -- parcel at its offset; walking up and taking it hands the items over server-side.
 
 local lockerProps = {}     -- [lockerId] = spawned wall entity
-local takeZones = {}       -- [lockerId] = ox_target zone id for the currently-open door's parcel
+local takeZones = {}       -- [lockerId] = target/interaction zone id for the currently-open door's parcel
 local spawnedBoxes = {}    -- [lockerId] = spawned parcel box entity, attached to the wall prop
 
 local function playDoorAnim(lockerId, doorSlot, open)
