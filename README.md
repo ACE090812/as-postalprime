@@ -121,9 +121,9 @@ false` in `config.lua` and this resource removes it manually instead.
 2. **Checkout** - the player picks exactly one pickup locker from the config list (sorted by real
    in-game distance), then places the order. **Payment happens immediately at checkout** (cash
    account or cash item, per `Config.payment.mode`) - not at collection.
-3. **One order at a time** - a player can't place a new order while they already have one
-   outstanding (preparing, or ready and uncollected). They have to collect it or let it expire
-   first.
+3. **Several orders at once** - a player can have up to `Config.order.maxActive` shop orders in
+   flight (preparing, or ready and uncollected). Each has its own pickup code; entering a code at
+   a locker opens the door for that order. Parcels sent by other resources never count towards the limit.
 4. **Preparing → Ready** - after `Config.order.prepSeconds`, the order flips to "ready for pickup"
    and a 6-digit pickup code appears in the Orders tab.
 5. **Collect physically** - at the chosen locker wall, the player uses the target option
@@ -202,23 +202,27 @@ Reviews are gated on actually having collected the item, not just ordered it:
 Everything persists to your database, not a JSON file - created automatically on first start:
 
 - **`postalprime_players`** - one row per player identifier. `data` is a JSON blob of that
-  player's `{ active order, order history, plus membership }`, matching the same shape the app
-  and server logic have always used internally - only *where* it's saved changed.
+  player's `{ orders, parcels, order history, plus membership, wishlist, coupon uses, seller
+  balance }`. (Saves from before multiple orders existed - which kept one `active` order - are
+  migrated automatically on load.)
 - **`postalprime_reviews`** - one row per `(item_id, identifier)` pair. `data` is a JSON blob of
   that single review (`rating`, `title`, `body`, author name, timestamp).
+- **`postalprime_stock`** - remaining stock for items with a `stock` cap.
+- **`postalprime_listings`** - marketplace listings (see "Marketplace").
+- **`postalprime_coupons`** - how many times each coupon code has been used server-wide.
 
-Saves are targeted (only the player/review that actually changed is written), not a full-table
-dump on every event. `oxmysql` must be started before this resource - it's listed in
+Saves are targeted: a player row is only written when its contents actually changed, money-related
+changes (checkout, refunds, collecting, returns) are written immediately, and minor ones (cart,
+wishlist, notification flags) are batched every `Config.storage.flushSeconds` and flushed when the
+player leaves or the resource stops. `oxmysql` must be started before this resource - it's listed in
 `dependencies` in `fxmanifest.lua`.
 
-## Known limitation - refunds while offline
+## Refunds while offline
 
-If a player's order expires while they're offline, this resource can't credit most frameworks'
-money/inventory for an offline player, so the order is still cleared but the refund is skipped (a
-warning is printed server-side naming the player and amount). If you want guaranteed offline
-refunds, the cleanest fix is queuing the refund and applying it via your framework's own
-player-loaded/spawn event - left out here to avoid guessing at your specific framework's offline
-API.
+If an order expires (or an admin cancels it) while the buyer is offline, the refund is queued on their
+record (`pendingRefund`) and paid out the next time they open the app or, if they are online, within a few
+seconds. Nothing is lost. Cancelling, expiring and admin-cancelling an order also put the stock and any
+coupon use back, and the refund goes to whoever *paid* (the buyer of a gift, not the recipient).
 
 ## Phone notifications
 
@@ -226,7 +230,11 @@ A real notification (banner + lockscreen, via sd-phone's own `exports['sd-phone'
 for the player, on top of the in-app "ready" badge, when:
 
 - their order becomes ready for pickup,
-- an uncollected order expires and is refunded,
+- an uncollected order expires and is refunded - and, `Config.notifications.expiryWarnSeconds` before
+  that, a "collect it soon" warning,
+- a saved (wishlist) item goes on sale or comes back in stock (`Config.notifications.wishlistAlerts`),
+- one of their marketplace listings sells (when the buyer collects),
+- a parcel arrived damaged and a goodwill refund was paid,
 - they physically collect a parcel from a locker, and
 - their Postal Prime Plus membership is within 24 hours of expiring (fires once per membership
   period - resets automatically on renewal).
@@ -337,9 +345,103 @@ phone's widget gallery ("Parcel tracking"); tapping one opens Postal Prime. They
 - Widget text is in `locales/en.lua` under `widget.*`, so it follows `Config.locale` like the rest.
 - Nothing in sd-phone was changed; the widget uses its documented `widgets` option on `addCustomApp`.
 
-## Not included
 
-- Multiple concurrent orders per player.
+## Sales: deal of the day, lightning deals and coupons
+
+- **Deal of the day** (`Config.deals.daily`): `count` catalog items get `pct` off from midnight to midnight
+  (server time), a different set each day.
+- **Lightning deal** (`Config.deals.lightning`): one item at `pct` off for `durationSeconds` at the start of
+  every `everySeconds` window. The home screen shows a banner for it.
+- Deals are worked out from the clock alone, so every player and every restart agrees and nothing is saved.
+  Add `noDeals = true` to a catalog item to keep it at full price. Marketplace items are never discounted.
+- **Coupons** (`Config.coupons`): codes typed at checkout, as a percentage (`pct`, optionally capped with
+  `maxDiscount`) or a flat amount (`flat`), with `minTotal`, a server-wide `uses` cap, `perPlayer` limit,
+  `plusOnly` and `expiresAt`. They discount the items total, never the delivery fee. Cancelling or
+  expiring the order gives the use back.
+- The server prices everything itself - the app only shows a preview - so a modified client can't change a price.
+
+## Returns and damaged parcels
+
+- **Returns** (`Config.returns`): for `windowSeconds` after collecting an order, each item shows a **Return**
+  button in the Orders tab. The item has to be in the player's inventory (a sealed parcel has to be opened
+  first); they get `refundPct` of what they paid for it (coupon discount included in that maths), and the
+  unit goes back into stock if it has a cap. Marketplace items, gifts taken by someone else and parcels
+  from other resources can't be returned.
+- **Damaged parcels**: a collected shop order has a `damagedChance` percent chance to "arrive damaged". The
+  items are still handed over, plus `damagedRefundPct` of the item total as a goodwill refund and a phone notification.
+
+## Automatic restock and low-stock alerts
+
+An item's `stock` number in `Config.catalog` is its **maximum**. Every `Config.restock.intervalMinutes` each
+capped item gets `Config.restock.amount` back (or its own `restockAmount`, 0 = never), up to the maximum.
+Units returned by cancelled, expired or returned orders never push an item above its maximum.
+When a capped item drops to `lowStockThreshold` or fewer a `lowstock` entry is written to the log.
+
+## Marketplace (players selling)
+
+Players with a job in `Config.marketplace.jobs` get a **Sell on Postal Prime** card in the You tab. They pick one
+of `allowedItems` (each with its own min/max price), a quantity and a price. The stock is taken from their
+inventory straight away (held in escrow on the listing) and the listing shows in the shop, under the
+**Marketplace** category, as "Sold by <name>". Checkout works exactly like any other item (lockers, home
+delivery, gifts, couriers, coupons - though not deals).
+
+- The seller is paid when the buyer **collects** the order, minus `commissionPct`, into a balance in the app
+  that they **Withdraw** to their bank. Cancelled and expired orders therefore never touch seller money, and the
+  units go back on the listing.
+- A listing can only be removed while none of its units are in uncollected orders; removing it returns the rest
+  of the stock to the seller's inventory (it fails if they can't carry it).
+- Marketplace items have no reviews and can't be returned. Admins can remove a listing with `/ppadmin market remove <id>`.
+
+## Searching and discovery
+
+The Home tab can be sorted (featured, price, rating, biggest deals) and filtered (on sale, in stock, bought before).
+A product page shows **Customers also bought** - worked out from what players actually collected together,
+recounted every 5 minutes, padded with the best-rated items in the same category when there isn't enough history yet.
+
+## Live order tracking
+
+While a player courier is driving an order to you, the Orders tab shows **Track on map**: a moving courier blip on
+your map and a live ETA. Only the owner of the order can see it, and only while the courier has it loaded.
+
+## Security and logging
+
+- **Keypad lockout** (`Config.security.collect`): wrong pickup codes are counted per player and per locker. After
+  `maxAttempts` the player's keypad is locked (the lock doubles each time, up to `maxLockSeconds`); a locker that
+  sees too many wrong codes from anyone locks too. Every lockout fires the server event
+  `as-postalprime:suspiciousCollect` (`source, citizenid, lockerId, lockCount`) so you can hook a police alert on it.
+  (A pickup code is only ever matched against the *caller's own* ready orders, so this is abuse protection and
+  an audit trail rather than a hole being closed.)
+- **Logging** (`Config.logging`): purchases, cancellations, returns, damaged parcels, lockouts, low stock,
+  marketplace listings/sales, coupon use and admin actions go to the console, ox_lib's logger (`lib.logger`) and/or a
+  Discord webhook. `webhookEvents` picks which events are posted to Discord.
+
+## Admin commands
+
+Give your admins the ACE `add_ace group.admin command.ppadmin allow`, then (in game or from the console):
+
+| Command | What it does |
+| --- | --- |
+| `ppadmin orders <id\|citizenid>` | list a player's in-flight orders |
+| `ppadmin cancel <orderId>` | cancel any uncollected shop order; refunds the buyer, returns stock and the coupon use |
+| `ppadmin refund <id\|citizenid> <amount>` | pay a refund (queued if they are offline) |
+| `ppadmin plus <id\|citizenid> <days>` | grant Postal Prime Plus |
+| `ppadmin stock <itemId> [amount]` | show or set an item's stock |
+| `ppadmin restock <itemId> <amount>` | add stock (`pprestock` from the console still works) |
+| `ppadmin coupon <CODE> [reset]` | show or reset a coupon's server-wide use count |
+| `ppadmin market [remove <id>]` | list marketplace listings / remove one |
+
+## Config check and locales
+
+On start (and any time with the `ppcheck` console command) the resource checks `config.lua` and prints plain-English
+problems: duplicate or invalid catalog ids and prices, inventory items that don't exist in ox_inventory (including the
+sealed-parcel boxes), bad locker coordinates, missing locker door models, a target system that isn't started,
+coupon/deal settings that can't work, marketplace config, and any locale file that is missing keys or has a
+`%s`/`%d` placeholder mismatch against English.
+
+Outside the server, `lua tools/check-locales.lua` (from the resource folder) compares every `locales/*.lua` with
+`locales/en.lua` and lists missing / extra / mismatched keys. Missing keys fall back to English at runtime.
+
+## Not included
 
 Everything above is config-driven on purpose - catalog, prices, lockers, prep/expiry timing - so
 none of it needs a code change to tune once it's running.

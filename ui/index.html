@@ -287,6 +287,70 @@
     .code-box .hint { font-size: 11.5px; color: var(--text-dim); margin-top: 6px; line-height: 1.4; }
     .expired-note { margin-top: 12px; font-size: 12px; color: var(--text-dim); }
 
+    .deal-tag { display: inline-block; align-self: flex-start; background: #fff0e0; color: #b8470a; font-size: 10.5px; font-weight: 800; border-radius: 4px; padding: 2px 6px; margin-top: 4px; }
+    .deal-tag.lightning { background: #fff7c2; color: #7a5a00; }
+    .card .price-row .was, .sheet .price .was { font-size: 11px; color: var(--text-dim); text-decoration: line-through; font-weight: 500; margin-left: 4px; }
+    .seller-tag { font-size: 10.5px; color: var(--text-dim); margin-top: 3px; }
+    .promo.deal { background: linear-gradient(135deg, #b8470a 0%, #e8830c 100%); cursor: pointer; }
+    .filters { display: flex; gap: 6px; padding: 10px 12px 0; align-items: center; flex-wrap: wrap; }
+    .pill {
+        border: 1px solid var(--hairline); background: var(--elevated); color: var(--text-dim); border-radius: 999px;
+        padding: 5px 11px; font-size: 11.5px; font-weight: 700; cursor: pointer;
+    }
+    .pill.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+    .sort-select {
+        margin-left: auto; border: 1px solid var(--hairline); background: var(--elevated); color: var(--text);
+        border-radius: 8px; padding: 5px 8px; font-size: 11.5px; font-family: inherit;
+    }
+    .coupon-row { display: flex; gap: 8px; margin: 0 0 8px; }
+    .coupon-row input {
+        flex: 1; border: 1px solid var(--hairline); border-radius: 10px; padding: 11px 12px; font-size: 13.5px;
+        background: var(--elevated); color: var(--text); text-transform: uppercase; font-family: inherit; box-sizing: border-box; min-width: 0;
+    }
+    .coupon-row button {
+        border: none; border-radius: 10px; padding: 0 16px; font-weight: 800; font-size: 13px; background: var(--navy);
+        color: #fff; cursor: pointer;
+    }
+    .coupon-ok { font-size: 12.5px; color: var(--green); font-weight: 700; margin-bottom: 10px; }
+    .coupon-ok button { border: none; background: none; color: var(--text-dim); text-decoration: underline; cursor: pointer; font-size: 12px; margin-left: 6px; }
+    .coupon-bad { font-size: 12.5px; color: var(--red); font-weight: 700; margin-bottom: 10px; }
+    .track-btn {
+        margin-top: 10px; width: 100%; border: 1px solid var(--navy); border-radius: 20px; padding: 9px; font-size: 12.5px;
+        font-weight: 700; background: #eef3ff; color: var(--navy); cursor: pointer;
+    }
+    .track-btn.on { background: var(--navy); color: #fff; }
+    .track-info { margin-top: 8px; font-size: 12px; color: var(--text-dim); font-weight: 600; }
+    .rate-btn.return-btn { color: var(--navy); border-color: var(--navy); background: #eef3ff; }
+    .rel-row { display: flex; gap: 8px; margin-top: 8px; }
+    .rel-tile {
+        flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px;
+        padding: 8px 6px; cursor: pointer; text-align: center; font-family: inherit; color: var(--text);
+    }
+    .rel-tile .ic { font-size: 26px; }
+    .rel-tile .nm { font-size: 11px; line-height: 1.25; margin-top: 3px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .rel-tile .pr { font-size: 12px; font-weight: 800; margin-top: 3px; }
+    .rev-heading.rel { margin-top: 18px; }
+    .sell-card { margin: 0 12px 12px; background: var(--elevated); border: 1px solid var(--hairline); border-radius: 12px; padding: 14px; }
+    .sell-card .sell-title { font-size: 15px; font-weight: 800; }
+    .sell-card .sell-sub { font-size: 12px; color: var(--text-dim); margin-top: 3px; line-height: 1.4; }
+    .sell-card .sell-bal { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; font-size: 13.5px; font-weight: 700; }
+    .sell-card .sell-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    .sell-card .sell-form select { grid-column: 1 / -1; }
+    .sell-card select, .sell-card input {
+        border: 1px solid var(--hairline); border-radius: 8px; padding: 9px 10px; font-size: 13px; background: var(--elevated);
+        color: var(--text); font-family: inherit; box-sizing: border-box; width: 100%; min-width: 0;
+    }
+    .sell-card .sell-btn {
+        border: none; border-radius: 10px; padding: 10px 14px; font-weight: 800; font-size: 13px; background: var(--orange);
+        color: #fff; cursor: pointer;
+    }
+    .sell-card .sell-btn:disabled { opacity: 0.5; cursor: default; }
+    .sell-card .sell-list-btn { grid-column: 1 / -1; }
+    .sell-listing { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--hairline); font-size: 13px; margin-top: 8px; }
+    .sell-listing .nm { flex: 1; min-width: 0; font-weight: 600; }
+    .sell-listing .nm small { display: block; color: var(--text-dim); font-weight: 500; }
+    .sell-listing button { border: 1px solid var(--hairline); background: var(--elevated); color: var(--orange-dark); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+
     .tabbar {
         flex-shrink: 0; display: flex; border-top: 1px solid var(--hairline); background: var(--elevated);
         padding-bottom: 22px;
@@ -514,6 +578,14 @@
     var deliveryMode = 'locker';   // 'locker' | 'home'
     var homeProps = null;          // null = not loaded yet, otherwise [{key,label,address}]
     var homePropKey = '';
+    var sortBy = 'featured';       // 'featured' | 'priceLow' | 'priceHigh' | 'rating' | 'deals'
+    var filterStock = false, filterSale = false, filterBought = false;
+    var couponInput = '';          // text in the checkout coupon box
+    var couponApplied = null;      // { code, discount, label } once the server accepted it
+    var couponMsg = '';
+    var trackInfo = {};            // orderId -> latest { stage, eta, distance } from the live tracker (client/main.lua)
+    var trackingId = null;         // the order being followed on the map
+    var sellDraft = { item: '', qty: 1, price: '' };
 
     function post(endpoint, data) {
         return fetch('https://' + RESOURCE + '/' + endpoint, {
@@ -565,6 +637,41 @@
         return '';
     }
 
+    function isBoughtBefore(id) {
+        return !!(state && state.boughtBefore && state.boughtBefore.indexOf(id) !== -1);
+    }
+    function activeShopOrders() {
+        return state ? state.orders.filter(function (o) { return !o.collected && !o.expired && !o.cancelled && !o.parcel; }).length : 0;
+    }
+    function fmtTime(ts) {
+        return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    function sortItems(list) {
+        var l = list.slice();
+        if (sortBy === 'priceLow') l.sort(function (a, b) { return a.price - b.price; });
+        else if (sortBy === 'priceHigh') l.sort(function (a, b) { return b.price - a.price; });
+        else if (sortBy === 'rating') l.sort(function (a, b) { return (b.rating || 0) - (a.rating || 0); });
+        else if (sortBy === 'deals') l.sort(function (a, b) { return (b.deal ? b.deal.pct : 0) - (a.deal ? a.deal.pct : 0); });
+        return l;
+    }
+    // "Customers also bought" (from real purchases), padded with the best-rated items of the same category.
+    function relatedItems(item) {
+        var ids = item.alsoBought || [];
+        var out = ids.map(catalogItem).filter(function (x) { return !!x; });
+        var byPurchases = out.length > 0;
+        if (out.length < 3 && !item.seller) {
+            state.catalog.filter(function (c) { return c.id !== item.id && c.cat === item.cat && !c.seller && out.indexOf(c) === -1; })
+                .sort(function (a, b) { return (b.rating || 0) - (a.rating || 0); })
+                .forEach(function (c) { if (out.length < 3) out.push(c); });
+        }
+        return { list: out, byPurchases: byPurchases };
+    }
+    function dealTag(item) {
+        if (!item.deal) return '';
+        var label = item.deal.kind === 'lightning' ? t('app.deal.lightningTag', item.deal.pct) : t('app.deal.dailyTag', item.deal.pct);
+        return '<div class="deal-tag ' + item.deal.kind + '">' + esc(label) + '</div>';
+    }
+
     function cartCount() {
         var n = 0;
         for (var k in cart) n += cart[k];
@@ -598,9 +705,12 @@
         return (state && state.home) ? (state.home.fee || 0) : 0;
     }
     // Checkout total: home delivery has its own single fee (free with Plus) instead of the normal delivery fee.
+    function couponOff() {
+        return couponApplied ? couponApplied.discount : 0;
+    }
     function checkoutTotal() {
-        if (deliveryMode === 'home' && homeEnabled()) return cartTotal() + (isPlus() ? 0 : homeFee());
-        return cartGrandTotal();
+        var base = deliveryMode === 'home' && homeEnabled() ? cartTotal() + (isPlus() ? 0 : homeFee()) : cartGrandTotal();
+        return Math.max(0, base - couponOff());
     }
     function setDeliveryMode(mode) {
         deliveryMode = mode;
@@ -655,11 +765,13 @@
     }
 
     function addToCart(id, qty) {
+        couponApplied = null;
         cart[id] = (cart[id] || 0) + qty;
         saveCart();
         showToast(t('app.addedToCart'));
     }
     function setQty(id, qty) {
+        couponApplied = null;
         if (qty <= 0) { delete cart[id]; } else { cart[id] = qty; }
         saveCart();
         render();
@@ -685,10 +797,10 @@
         });
     }
 
-    function cancelOrder() {
+    function cancelOrder(orderId) {
         if (busy) return;
         busy = true; render();
-        post('as-postalprime/cancelOrder').then(function (res) {
+        post('as-postalprime/cancelOrder', { orderId: orderId }).then(function (res) {
             busy = false;
             if (!res || !res.ok) {
                 showToast((res && res.error) || t('app.err.cancel'));
@@ -713,6 +825,7 @@
             propertyKey: isHome ? homePropKey : undefined,
             items: Object.assign({}, cart),
             giftTo: (!isHome && giftMode) ? giftName.trim() : undefined,
+            coupon: couponApplied ? couponApplied.code : undefined,
         }).then(function (res) {
             busy = false;
             if (!res || !res.ok) {
@@ -722,6 +835,7 @@
             }
             state.orders = res.orders;
             cart = {};
+            couponApplied = null; couponInput = ''; couponMsg = '';
             checkoutLocker = null;
             var wasGift = res.gifted;
             var giftedTo = res.giftedTo;
@@ -730,6 +844,49 @@
             tab = wasGift ? 'home' : 'orders';
             render();
             showToast(wasGift ? t('app.toast.giftSent', giftedTo) : (isHome ? t('app.toast.orderHome') : t('app.toast.orderLocker')));
+        });
+    }
+
+    function applyCoupon() {
+        if (busy || !couponInput.trim()) return;
+        busy = true; couponMsg = ''; render();
+        post('as-postalprime/checkCoupon', { code: couponInput.trim(), items: Object.assign({}, cart) }).then(function (res) {
+            busy = false;
+            if (res && res.ok) { couponApplied = { code: res.code, discount: res.discount, label: res.label || '' }; couponMsg = ''; }
+            else { couponApplied = null; couponMsg = (res && res.error) || t('err.coupon.unknown'); }
+            render();
+        });
+    }
+
+    function returnItem(orderId, itemId) {
+        if (busy) return;
+        busy = true; render();
+        post('as-postalprime/returnItem', { orderId: orderId, itemId: itemId, qty: 1 }).then(function (res) {
+            busy = false;
+            if (!res || !res.ok) { showToast((res && res.error) || t('app.err.return')); render(); return; }
+            state.orders = res.orders;
+            render();
+            showToast(t('app.toast.returned', res.refund.toFixed(2)));
+        });
+    }
+
+    function toggleTrack(orderId) {
+        var on = trackingId !== orderId;
+        trackingId = on ? orderId : null;
+        if (!on) delete trackInfo[orderId];
+        post('as-postalprime/track', { orderId: orderId, on: on });
+        render();
+    }
+
+    function marketCall(endpoint, payload, okMsg) {
+        if (busy) return;
+        busy = true; render();
+        post('as-postalprime/' + endpoint, payload).then(function (res) {
+            busy = false;
+            if (!res || !res.ok) { showToast((res && res.error) || t('app.err.market')); render(); return; }
+            state.market = res.market;
+            render();
+            showToast(okMsg);
         });
     }
 
@@ -843,8 +1000,12 @@
                 : (activeCategory === 'all' || item.cat === activeCategory);
             var q = searchQuery.trim().toLowerCase();
             var searchOk = !q || item.label.toLowerCase().indexOf(q) !== -1;
-            return catOk && searchOk;
+            var stockOk = !filterStock || !outOfStock(item);
+            var saleOk = !filterSale || !!item.deal;
+            var boughtOk = !filterBought || isBoughtBefore(item.id);
+            return catOk && searchOk && stockOk && saleOk && boughtOk;
         });
+        filtered = sortItems(filtered);
 
         var html = '';
         if (isPlus()) {
@@ -852,6 +1013,19 @@
         } else {
             html += '<div class="promo" data-tab="you" style="cursor:pointer;"><div><div class="t">' + esc(t('app.promo.go')) + '</div><div class="s">' + esc(t('app.promo.from', state.plusConfig ? state.plusConfig.price : '')) + '</div></div><div class="em">🚀</div></div>';
         }
+        var lightning = state.catalog.filter(function (i) { return i.deal && i.deal.kind === 'lightning'; })[0];
+        if (lightning) {
+            html += '<div class="promo deal" data-detail="' + lightning.id + '"><div><div class="t">⚡ ' + esc(t('app.deal.lightning')) + '</div><div class="s">' +
+                esc(t('app.deal.lightningSub', lightning.label, lightning.deal.pct, fmtTime(lightning.deal.endsAt))) + '</div></div><div class="em">' + lightning.icon + '</div></div>';
+        }
+        html += '<div class="filters">' +
+            '<button class="pill ' + (filterSale ? 'on' : '') + '" data-filter="sale">' + esc(t('app.filter.sale')) + '</button>' +
+            '<button class="pill ' + (filterStock ? 'on' : '') + '" data-filter="stock">' + esc(t('app.filter.stock')) + '</button>' +
+            '<button class="pill ' + (filterBought ? 'on' : '') + '" data-filter="bought">' + esc(t('app.filter.bought')) + '</button>' +
+            '<select class="sort-select" id="sortSelect">' +
+            [['featured', 'app.sort.featured'], ['priceLow', 'app.sort.priceLow'], ['priceHigh', 'app.sort.priceHigh'], ['rating', 'app.sort.rating'], ['deals', 'app.sort.deals']].map(function (o) {
+                return '<option value="' + o[0] + '"' + (sortBy === o[0] ? ' selected' : '') + '>' + esc(t(o[1])) + '</option>';
+            }).join('') + '</select></div>';
         var catLabel = t('app.section.recommended');
         if (activeCategory === 'wishlist') catLabel = t('app.section.saved');
         else if (activeCategory !== 'all') {
@@ -874,8 +1048,11 @@
                 '<button class="heart-btn ' + (saved ? 'saved' : '') + '" data-wishlist="' + item.id + '">' + (saved ? '❤️' : '🤍') + '</button>' +
                 '<div class="icon">' + item.icon + '</div>' +
                 '<div class="label">' + item.label + '</div>' +
-                '<div class="stars">' + stars(item.rating) + '<span>' + fmtReviewCount(item.reviews) + '</span></div>' +
-                '<div class="price-row"><span class="sym">$</span><span class="amt">' + p.whole + '</span><span class="sym">' + p.cents + '</span></div>' +
+                (item.seller ? '<div class="seller-tag">' + esc(t('app.soldBy', item.seller)) + '</div>'
+                    : '<div class="stars">' + stars(item.rating) + '<span>' + fmtReviewCount(item.reviews) + '</span></div>') +
+                '<div class="price-row"><span class="sym">$</span><span class="amt">' + p.whole + '</span><span class="sym">' + p.cents + '</span>' +
+                (item.origPrice ? '<span class="was">$' + item.origPrice.toFixed(2) + '</span>' : '') + '</div>' +
+                dealTag(item) +
                 '<div class="prime-badge">' + esc(isPlus() ? t('app.card.primeFree') : t('app.card.delivery', deliveryFee().toFixed(2))) + '</div>' +
                 stockNote(item) +
                 '<button class="add-btn ' + (inCart ? 'in-cart' : '') + '" data-quickadd="' + item.id + '" ' + (oos ? 'disabled' : '') + '>' +
@@ -923,9 +1100,9 @@
     function renderCheckout() {
         var html = '<div style="padding:14px 12px 0;">';
         // Parcels sent by other resources (passport etc.) never stop you ordering.
-        var hasActive = state && state.orders.some(function (o) { return !o.collected && !o.expired && !o.cancelled && !o.parcel; });
-        if (hasActive) {
-            html += '<div class="empty-state" style="margin-top:10px;"><div class="big">📦</div>' + esc(t('app.empty.hasActive')) + '<br>' + esc(t('app.empty.hasActiveHint')) + '</div></div>';
+        var maxActive = (state && state.maxActive) || 1;
+        if (activeShopOrders() >= maxActive) {
+            html += '<div class="empty-state" style="margin-top:10px;"><div class="big">📦</div>' + esc(t('app.empty.maxActive', maxActive)) + '<br>' + esc(t('app.empty.hasActiveHint')) + '</div></div>';
             return html;
         }
         var homeOn = homeEnabled();
@@ -977,12 +1154,19 @@
         }
         }
 
+        html += '<div class="coupon-row"><input id="couponInput" placeholder="' + esc(t('app.coupon.placeholder')) + '" value="' + couponInput.replace(/"/g, '&quot;') + '"><button id="applyCoupon">' + esc(t('app.coupon.apply')) + '</button></div>';
+        if (couponApplied) {
+            html += '<div class="coupon-ok">✓ ' + esc(couponApplied.label || couponApplied.code) + ' (−$' + couponApplied.discount.toFixed(2) + ')<button id="removeCoupon">' + esc(t('app.coupon.remove')) + '</button></div>';
+        } else if (couponMsg) {
+            html += '<div class="coupon-bad">' + esc(couponMsg) + '</div>';
+        }
         var canPlace = !busy && (homeMode ? !!homePropKey : (checkoutLocker && (!giftMode || giftName.trim() !== '')));
         html += '<div class="summary-card">' +
             '<div class="summary-row"><span>' + esc(t('app.items', cartCount())) + '</span><span>$' + cartTotal().toFixed(2) + '</span></div>' +
             '<div class="summary-row"><span>' + esc(homeMode ? t('app.homeDelivery') : t('app.delivery')) + '</span>' + (isPlus() ?
                 '<span style="color:var(--green);font-weight:700;">' + esc(t('app.freeWithPlus')) + '</span>' :
                 '<span>$' + (homeMode ? homeFee() : deliveryFee()).toFixed(2) + '</span>') + '</div>' +
+            (couponApplied ? '<div class="summary-row"><span>' + esc(t('app.coupon.discount')) + '</span><span style="color:var(--green);font-weight:700;">−$' + couponApplied.discount.toFixed(2) + '</span></div>' : '') +
             '<div class="summary-row total"><span>' + esc(t('app.orderTotal')) + '</span><span>$' + checkoutTotal().toFixed(2) + '</span></div>' +
             (giftMode && !homeMode ? '<div class="stock-note low" style="margin:4px 12px 0;">' + esc(t('app.gift.note')) + '</div>' : '') +
             (isPlus() || giftMode ? '' : '<div class="plus-nudge" data-tab="you">' + esc(t('app.plusNudge')) + '</div>') +
@@ -1025,9 +1209,17 @@
                         html2 += '<button class="cancel-btn" data-cancel="' + o.id + '" ' + (busy ? 'disabled' : '') + '>' + esc(t('app.cancelRefund')) + '</button>';
                     }
                 }
+                if (o.courier === 'loaded' && !o.ready) {
+                    var ti = trackInfo[o.id];
+                    html2 += '<button class="track-btn ' + (trackingId === o.id ? 'on' : '') + '" data-track="' + o.id + '">' + esc(trackingId === o.id ? t('app.track.stop') : t('app.track.start')) + '</button>';
+                    if (trackingId === o.id && ti && ti.stage === 'out' && typeof ti.eta === 'number') {
+                        html2 += '<div class="track-info">' + esc(t('app.track.eta', Math.max(1, Math.ceil(ti.eta / 60)), Math.round(ti.distance || 0))) + '</div>';
+                    }
+                }
                 if (o.ready && !o.collected && !o.expired && o.code) {
                     html2 += '<div class="code-box"><div><div class="label">' + esc(t('app.pickupCode')) + '</div><div class="code">' + o.code + '</div></div>' +
-                        '<div class="hint">' + (o.deliveredBy ? esc(t('app.deliveredBy', o.deliveredBy)) + ' ' : '') + esc(t('app.headTo', o.lockerLabel)) + '</div></div>';
+                        '<div class="hint">' + (o.deliveredBy ? esc(t('app.deliveredBy', o.deliveredBy)) + ' ' : '') + esc(t('app.headTo', o.lockerLabel)) +
+                        (o.expiresAt ? ' ' + esc(t('app.collectWithin', Math.max(1, Math.ceil((o.expiresAt - Date.now()) / 60000)))) : '') + '</div></div>';
                 }
                 if (o.delivery === 'home' && o.ready && !o.collected && !o.expired) {
                     html2 += '<div class="code-box"><div class="hint" style="margin-top:0;">' + (o.deliveredBy ? esc(t('app.deliveredBy', o.deliveredBy)) + ' ' : '') + esc(t('app.frontDoor')) + '</div></div>';
@@ -1041,6 +1233,12 @@
                 if (o.cancelled) {
                     html2 += '<div class="expired-note">' + esc(t('app.note.cancelled')) + '</div>';
                 }
+                if (o.discount > 0) {
+                    html2 += '<div class="gifted-note">' + esc(t('app.discountNote', o.coupon || '', o.discount.toFixed(2))) + '</div>';
+                }
+                if (o.damaged) {
+                    html2 += '<div class="expired-note">' + esc(t('app.damagedNote', o.damaged.toFixed(2))) + '</div>';
+                }
                 // Parcels sent by other resources (passport etc.) aren't purchases: no reviews, no reorder.
                 if (o.collected && !o.takenBy && !o.parcel) {
                     html2 += '<div class="review-prompts">';
@@ -1049,6 +1247,12 @@
                             html2 += '<div class="review-done">' + esc(t('app.youReviewed', it.label)) + '</div>';
                         } else {
                             html2 += '<button class="rate-btn" data-writereview="' + it.id + '">' + esc(t('app.rateReview', it.label)) + '</button>';
+                        }
+                    });
+                    o.items.forEach(function (it) {
+                        if (it.returned > 0) html2 += '<div class="review-done" style="color:var(--text-dim);">' + esc(t('app.returnedNote', it.returned, it.label)) + '</div>';
+                        if (it.returnable > 0) {
+                            html2 += '<button class="rate-btn return-btn" data-return="' + o.id + '" data-return-item="' + it.id + '">' + esc(t('app.return', it.label, it.returnRefund.toFixed(2))) + '</button>';
                         }
                     });
                     html2 += '<button class="rate-btn reorder-btn" data-reorder="' + o.id + '">' + esc(t('app.reorder')) + '</button>';
@@ -1094,6 +1298,32 @@
         });
     }
 
+    function renderSell() {
+        var m = state && state.market;
+        if (!m || !m.enabled) return '';
+        if (!m.canSell && !(m.mine && m.mine.length) && !(m.balance > 0)) return '';
+        var html = '<div class="sell-card"><div class="sell-title">🏷️ ' + esc(t('app.sell.title')) + '</div>' +
+            '<div class="sell-sub">' + esc(t('app.sell.sub', m.commissionPct)) + '</div>' +
+            '<div class="sell-bal"><span>' + esc(t('app.sell.balance')) + ' $' + (m.balance || 0).toFixed(2) + '</span>' +
+            '<button class="sell-btn" id="sellWithdraw" ' + ((m.balance > 0 && !busy) ? '' : 'disabled') + '>' + esc(t('app.sell.withdraw')) + '</button></div>';
+        if (m.canSell) {
+            if (!sellDraft.item && m.allowed.length) sellDraft.item = m.allowed[0].item;
+            html += '<div class="sell-form"><select id="sellItem">' + m.allowed.map(function (a) {
+                return '<option value="' + a.item + '"' + (sellDraft.item === a.item ? ' selected' : '') + '>' + esc(a.icon + ' ' + a.label + ' ($' + a.minPrice + '–$' + a.maxPrice + ')') + '</option>';
+            }).join('') + '</select>' +
+                '<input id="sellQty" type="number" min="1" max="' + m.maxQty + '" placeholder="' + esc(t('app.sell.qty')) + '" value="' + sellDraft.qty + '">' +
+                '<input id="sellPrice" type="number" min="0" step="0.01" placeholder="' + esc(t('app.sell.price')) + '" value="' + sellDraft.price + '">' +
+                '<button class="sell-btn sell-list-btn" id="sellList" ' + ((busy || (m.mine || []).length >= m.maxListings) ? 'disabled' : '') + '>' + esc(t('app.sell.list')) + '</button></div>';
+        } else {
+            html += '<div class="sell-sub" style="margin-top:10px;">' + esc(t('app.sell.jobOnly')) + '</div>';
+        }
+        (m.mine || []).forEach(function (l) {
+            html += '<div class="sell-listing"><div class="nm">' + esc(l.icon + ' ' + l.label) + '<small>' + esc(t('app.sell.listing', l.qty, l.price.toFixed(2))) + '</small></div>' +
+                '<button data-sellremove="' + l.id + '">' + esc(t('app.sell.remove')) + '</button></div>';
+        });
+        return html + '</div>';
+    }
+
     function renderYou() {
         var orders = (state && state.orders) || [];
         var collected = orders.filter(function (o) { return o.collected; });
@@ -1112,6 +1342,7 @@
             '<div class="sub">' + esc(isPlus() ? t('app.you.memberPlus') : t('app.you.member')) + '</div></div></div>';
 
         html += renderPlusCard();
+        html += renderSell();
 
         html += '<div class="you-stats">' +
             '<div class="you-stat"><div class="n">' + orders.length + '</div><div class="l">' + esc(t('app.you.ordersPlaced')) + '</div></div>' +
@@ -1133,14 +1364,18 @@
         var maxQty = typeof item.stock === 'number' ? Math.max(0, item.stock) : Infinity;
         var p = fmt(item.price * detailItem.qty);
         var savedDetail = inWishlist(item.id);
+        var rel = relatedItems(item);
         return '<div class="sheet-backdrop" id="sheetBackdrop">' +
             '<div class="sheet">' +
             '<button class="close-x" id="closeSheet">✕</button>' +
             '<button class="heart-btn ' + (savedDetail ? 'saved' : '') + '" data-wishlist="' + item.id + '">' + (savedDetail ? '❤️' : '🤍') + '</button>' +
             '<div class="icon-big">' + item.icon + '</div>' +
             '<div class="name">' + item.label + '</div>' +
-            '<div class="stars">' + stars(item.rating) + '<span>' + esc(t('app.ratings', fmtReviewCount(item.reviews))) + '</span></div>' +
-            '<div class="price"><span class="sym">$</span>' + fmt(item.price).whole + '<span class="sym">' + fmt(item.price).cents + '</span></div>' +
+            (item.seller ? '<div class="seller-tag" style="text-align:center;">' + esc(t('app.soldBy', item.seller)) + '</div>'
+                : '<div class="stars">' + stars(item.rating) + '<span>' + esc(t('app.ratings', fmtReviewCount(item.reviews))) + '</span></div>') +
+            '<div class="price"><span class="sym">$</span>' + fmt(item.price).whole + '<span class="sym">' + fmt(item.price).cents + '</span>' +
+            (item.origPrice ? '<span class="was">$' + item.origPrice.toFixed(2) + '</span>' : '') + '</div>' +
+            (item.deal ? '<div style="text-align:center;">' + dealTag(item) + '<div class="home-note" style="margin:4px 0 0;">' + esc(t('app.deal.ends', fmtTime(item.deal.endsAt))) + '</div></div>' : '') +
             '<div class="prime-line">' + esc(isPlus() ? t('app.sheet.primeFree') : t('app.sheet.delivery', deliveryFee().toFixed(2))) + '</div>' +
             stockNote(item) +
             (oos ? '' :
@@ -1150,11 +1385,16 @@
                 '</div></div>') +
             '<button class="primary-btn" id="confirmAdd" ' + (oos ? 'disabled' : '') + '>' +
             esc(oos ? t('app.outOfStock') : t('app.sheet.add', detailItem.qty, p.whole, p.cents)) + '</button>' +
+            (rel.list.length ? '<div class="rev-heading rel">' + esc(rel.byPurchases ? t('app.alsoBought') : t('app.moreLike')) + '</div><div class="rel-row">' +
+                rel.list.map(function (r) {
+                    return '<button class="rel-tile" data-related="' + r.id + '"><div class="ic">' + r.icon + '</div><div class="nm">' + esc(r.label) + '</div><div class="pr">$' + r.price.toFixed(2) + '</div></button>';
+                }).join('') + '</div>' : '') +
             renderReviews(item) +
             '</div></div>';
     }
 
     function renderReviews(item) {
+        if (item.seller) return '';
         var cached = reviewsCache[item.id];
         var html = '<div class="reviews-section">' + '<div class="rev-heading">' + esc(t('app.reviews.title')) + '</div>';
         if (!cached || cached.loading) {
@@ -1269,8 +1509,64 @@
                 var id = el.getAttribute('data-detail');
                 detailItem = { id: id, qty: 1 };
                 render();
-                fetchReviews(id);
+                var di = catalogItem(id);
+                if (di && !di.seller) fetchReviews(id);
             };
+        });
+
+        root.querySelectorAll('[data-related]').forEach(function (el) {
+            el.onclick = function () {
+                var id = el.getAttribute('data-related');
+                detailItem = { id: id, qty: 1 };
+                render();
+                var di = catalogItem(id);
+                if (di && !di.seller) fetchReviews(id);
+            };
+        });
+
+        root.querySelectorAll('[data-filter]').forEach(function (el) {
+            el.onclick = function () {
+                var f = el.getAttribute('data-filter');
+                if (f === 'sale') filterSale = !filterSale;
+                else if (f === 'stock') filterStock = !filterStock;
+                else filterBought = !filterBought;
+                render();
+            };
+        });
+        var sortSelect = document.getElementById('sortSelect');
+        if (sortSelect) sortSelect.onchange = function (e) { sortBy = e.target.value; render(); };
+
+        var couponEl = document.getElementById('couponInput');
+        if (couponEl) {
+            couponEl.oninput = function (e) { couponInput = e.target.value; couponApplied = null; couponMsg = ''; };
+            couponEl.onkeydown = function (e) { if (e.key === 'Enter') applyCoupon(); };
+        }
+        var applyCouponBtn = document.getElementById('applyCoupon');
+        if (applyCouponBtn) applyCouponBtn.onclick = applyCoupon;
+        var removeCouponBtn = document.getElementById('removeCoupon');
+        if (removeCouponBtn) removeCouponBtn.onclick = function () { couponApplied = null; couponInput = ''; couponMsg = ''; render(); };
+
+        root.querySelectorAll('[data-return]').forEach(function (el) {
+            el.onclick = function () { returnItem(el.getAttribute('data-return'), el.getAttribute('data-return-item')); };
+        });
+        root.querySelectorAll('[data-track]').forEach(function (el) {
+            el.onclick = function () { toggleTrack(el.getAttribute('data-track')); };
+        });
+
+        var sellItem = document.getElementById('sellItem');
+        if (sellItem) sellItem.onchange = function (e) { sellDraft.item = e.target.value; };
+        var sellQty = document.getElementById('sellQty');
+        if (sellQty) sellQty.oninput = function (e) { sellDraft.qty = e.target.value; };
+        var sellPrice = document.getElementById('sellPrice');
+        if (sellPrice) sellPrice.oninput = function (e) { sellDraft.price = e.target.value; };
+        var sellList = document.getElementById('sellList');
+        if (sellList) sellList.onclick = function () {
+            marketCall('market:list', { item: sellDraft.item, qty: parseInt(sellDraft.qty, 10) || 0, price: parseFloat(sellDraft.price) || 0 }, t('app.toast.listed'));
+        };
+        var sellWithdraw = document.getElementById('sellWithdraw');
+        if (sellWithdraw) sellWithdraw.onclick = function () { marketCall('market:withdraw', {}, t('app.toast.withdrawn')); };
+        root.querySelectorAll('[data-sellremove]').forEach(function (el) {
+            el.onclick = function () { marketCall('market:remove', { id: parseInt(el.getAttribute('data-sellremove'), 10) }, t('app.toast.unlisted')); };
         });
 
         var closeSheet = document.getElementById('closeSheet');
@@ -1302,7 +1598,7 @@
         });
 
         var goCheckout = document.getElementById('goCheckout');
-        if (goCheckout) goCheckout.onclick = function () { deliveryMode = 'locker'; homeProps = null; tab = 'checkout'; render(); };
+        if (goCheckout) goCheckout.onclick = function () { deliveryMode = 'locker'; homeProps = null; couponApplied = null; couponMsg = ''; tab = 'checkout'; render(); };
 
         var backToCart = document.getElementById('backToCart');
         if (backToCart) backToCart.onclick = function () { tab = 'cart'; render(); };
@@ -1343,7 +1639,7 @@
         });
 
         root.querySelectorAll('[data-cancel]').forEach(function (el) {
-            el.onclick = function () { cancelOrder(); };
+            el.onclick = function () { cancelOrder(el.getAttribute('data-cancel')); };
         });
 
         root.querySelectorAll('[data-writereview]').forEach(function (el) {
@@ -1515,6 +1811,11 @@
         if (data.action === 'as-postalprime:keypad:show') { showLockerKeypad(data.label); return; }
         if (!shown) return;
         if (data.action === 'as-postalprime:updated') { refresh(); return; }
+        if (data.action === 'as-postalprime:track') {
+            if (data.stage === 'done' || data.stage === 'ready' || data.stage === 'stopped') { delete trackInfo[data.orderId]; if (trackingId === data.orderId) trackingId = null; refresh(); }
+            else { trackInfo[data.orderId] = data; render(); }
+            return;
+        }
     });
 
     document.addEventListener('visibilitychange', function () {

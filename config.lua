@@ -51,7 +51,10 @@ Config = {
     -- below). Add `stock = N` to any item to cap how many can ever be sold before it shows
     -- "Out of stock" and blocks checkout; the remaining count lives in the `postalprime_stock`
     -- SQL table (not this file) so it survives restarts and actually depletes as people buy it.
-    -- Restock a capped item live with the `pprestock <itemId> <amount>` server console command.
+    -- Restock a capped item live with the `pprestock <itemId> <amount>` server console command or
+    -- `/ppadmin restock`. With Config.restock enabled, `stock` is also the item's MAXIMUM: it refills towards it
+    -- automatically (restockAmount = N on an item overrides the amount, 0 = never auto-restock).
+    -- noDeals = true keeps an item out of the deal of the day / lightning deals.
     catalog = {
         { id = 'earbuds',    label = 'Wireless Earbuds, Noise Cancelling', item = 'pp_earbuds',    price = 89,  icon = '🎧',  cat = 'tech',      baseRating = 4, baseReviews = 214 },
         { id = 'phonecase',  label = 'Shockproof Phone Case',              item = 'pp_phonecase',  price = 15,  icon = '📱',  cat = 'tech',      baseRating = 5, baseReviews = 84 },
@@ -214,8 +217,9 @@ Config = {
     },
 
     order = {
-        -- One active (uncollected, unexpired) order per player at a time - they must collect or
-        -- let it expire before placing another.
+        -- How many shop orders (uncollected, unexpired) a player can have in flight at once. Parcels sent by other
+        -- resources are separate (maxParcels) and never count towards this.
+        maxActive = 3,
         -- How long from checkout until the order is "ready for pickup" at the locker.
         prepSeconds = 180,
         -- An uncollected order auto-cancels this long after becoming ready, and is fully refunded
@@ -241,6 +245,122 @@ Config = {
         deliveryFee = 15,
         -- How long "preparing" lasts for a member's order, instead of Config.order.prepSeconds.
         prepSeconds = 60,
+    },
+
+    -- ─── Security ────────────────────────────────────────────────────────────
+    -- Pickup-code lockout at the locker keypad. Wrong codes count per player and per locker; hitting the limit locks
+    -- the keypad for that player (the lock doubles each time they trip it again, up to maxLockSeconds) or locker.
+    -- Every lockout also fires the server event 'as-postalprime:suspiciousCollect' (source, citizenid, lockerId, fails)
+    -- so you can hook a police alert onto it.
+    security = {
+        collect = {
+            maxAttempts = 5,          -- wrong codes in a row before the player is locked out
+            lockSeconds = 60,         -- first lockout length
+            maxLockSeconds = 900,     -- repeated lockouts double up to this
+            lockerMaxAttempts = 20,   -- wrong codes at ONE locker (all players) within lockerWindowSeconds locks that locker
+            lockerWindowSeconds = 60,
+            lockerLockSeconds = 120,
+        },
+    },
+
+    -- ─── Storage ─────────────────────────────────────────────────────────────
+    -- Player rows are only written when their data actually changed. Money-related changes (checkout, refunds,
+    -- collecting) are saved immediately; minor ones (cart, wishlist, flags) are batched every flushSeconds.
+    storage = {
+        flushSeconds = 5,
+    },
+
+    -- ─── Logging ─────────────────────────────────────────────────────────────
+    -- Purchases, cancellations, returns, lockouts, restocks, admin actions and marketplace sales.
+    --   console    = print each line in the server console
+    --   oxLogger   = also send it through ox_lib's logger (lib.logger - goes to Datadog/Loki/Fivemanage/etc. if you set that up)
+    --   webhook    = Discord webhook URL ('' = off). webhookEvents lists which events are posted there (false/missing = skipped).
+    logging = {
+        enabled = true,
+        console = false,
+        oxLogger = true,
+        webhook = '',
+        webhookName = 'Postal Prime',
+        webhookEvents = {
+            purchase = true, cancel = true, ['return'] = true, damaged = true, lockout = true,
+            lowstock = true, admin = true, sale = true, listing = true, coupon = false, restock = false,
+        },
+    },
+
+    -- ─── Sales: deal of the day, lightning deals, coupons ────────────────────
+    -- Deals are worked out from the clock alone (nothing saved), so every player and every restart agrees. Marketplace
+    -- items and items with noDeals = true in Config.catalog are never discounted.
+    deals = {
+        enabled = true,
+        -- Deal of the day: `count` catalog items get `pct` off from 00:00 to 23:59 (server time), a new set each day.
+        daily = { count = 2, pct = 15 },
+        -- Lightning deal: one item at `pct` off for `durationSeconds` at the start of every `everySeconds` window.
+        lightning = { enabled = true, everySeconds = 7200, durationSeconds = 900, pct = 30 },
+    },
+
+    -- Coupon codes typed at checkout. They discount the ITEMS total (never the delivery fee).
+    --   pct / flat      percentage off, or a flat amount off (use one)
+    --   maxDiscount     cap for a percentage coupon
+    --   minTotal        minimum items total
+    --   uses            how many times it can be used in total across the server (omit = unlimited)
+    --   perPlayer       how many times one character can use it (default 1)
+    --   plusOnly        only Postal Prime Plus members
+    --   expiresAt       unix timestamp it stops working at (omit = never)
+    coupons = {
+        WELCOME10 = { pct = 10, minTotal = 20, maxDiscount = 50, perPlayer = 1, label = '10% off your order' },
+        FREEBIE5  = { flat = 5, minTotal = 15, perPlayer = 3, label = '$5 off' },
+    },
+
+    -- ─── Automatic restock ───────────────────────────────────────────────────
+    -- Items with a `stock` number in Config.catalog treat that number as their MAXIMUM. Every intervalMinutes each
+    -- one gets `amount` units back, up to its maximum. An item can override it with restockAmount = N (0 = never
+    -- restocks automatically; the pprestock / ppadmin commands still work).
+    restock = {
+        enabled = true,
+        intervalMinutes = 60,
+        amount = 5,
+        -- A 'lowstock' log entry (and webhook post) is sent once when a capped item drops to this many or fewer.
+        lowStockThreshold = 3,
+    },
+
+    -- ─── Returns and damaged parcels ─────────────────────────────────────────
+    returns = {
+        enabled = true,
+        -- How long after collecting an order its items can be returned from the Orders tab.
+        windowSeconds = 86400,
+        -- Share of what you paid for the item that you get back.
+        refundPct = 80,
+        -- Put returned units back in stock (only for items that have a stock cap).
+        restock = true,
+        -- Chance (percent) a locker/door parcel "arrives damaged" when collected: you still get the items, plus
+        -- damagedRefundPct of the order's item total back as a goodwill refund. 0 = never.
+        damagedChance = 3,
+        damagedRefundPct = 25,
+    },
+
+    -- ─── Notifications ───────────────────────────────────────────────────────
+    notifications = {
+        -- Phone notification when a ready locker order has this many seconds left before it is cancelled (0 = off).
+        expiryWarnSeconds = 300,
+        -- Phone notification when a saved (wishlist) item goes on sale or comes back in stock.
+        wishlistAlerts = true,
+    },
+
+    -- ─── Marketplace: players sell through Postal Prime ──────────────────────
+    -- Players with one of these framework jobs can list stock from their own inventory (the items are held in escrow
+    -- until sold or the listing is removed). Buyers see the listings in the shop and checkout works as normal; the
+    -- seller is paid when the buyer COLLECTS the order, minus commissionPct, into a balance they withdraw in the app.
+    marketplace = {
+        enabled = true,
+        jobs = { 'mechanic', 'burgershot', 'cardealer' },   -- framework job names allowed to sell
+        commissionPct = 10,
+        maxListings = 8,
+        maxQtyPerListing = 50,
+        -- Only these items can be listed. min/maxPrice bound the unit price the seller can set.
+        allowedItems = {
+            { item = 'pp_coffee',  label = 'Coffee Beans, Dark Roast 1kg', icon = '☕', minPrice = 8,  maxPrice = 60 },
+            { item = 'pp_toolkit', label = 'Home Toolkit, 45-Piece',       icon = '🧰', minPrice = 25, maxPrice = 150 },
+        },
     },
 }
 

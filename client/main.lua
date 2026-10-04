@@ -75,8 +75,91 @@ RegisterNUICallback('as-postalprime/saveCart', function(data, cb)
     cb(lib.callback.await('as-postalprime:saveCart', false, data))
 end)
 
-RegisterNUICallback('as-postalprime/cancelOrder', function(_, cb)
-    cb(lib.callback.await('as-postalprime:cancelOrder', false))
+RegisterNUICallback('as-postalprime/cancelOrder', function(data, cb)
+    cb(lib.callback.await('as-postalprime:cancelOrder', false, data))
+end)
+
+RegisterNUICallback('as-postalprime/checkCoupon', function(data, cb)
+    cb(lib.callback.await('as-postalprime:checkCoupon', false, data))
+end)
+
+RegisterNUICallback('as-postalprime/returnItem', function(data, cb)
+    cb(lib.callback.await('as-postalprime:returnItem', false, data))
+end)
+
+RegisterNUICallback('as-postalprime/market:list', function(data, cb)
+    cb(lib.callback.await('as-postalprime:market:list', false, data))
+end)
+
+RegisterNUICallback('as-postalprime/market:remove', function(data, cb)
+    cb(lib.callback.await('as-postalprime:market:remove', false, data))
+end)
+
+RegisterNUICallback('as-postalprime/market:withdraw', function(_, cb)
+    cb(lib.callback.await('as-postalprime:market:withdraw', false))
+end)
+
+-- ─── Live order tracking ──────────────────────────────────────────────────────
+-- "Track on map" in the Orders tab: while a player courier is driving the order over, a moving blip follows their van
+-- and the app shows an ETA. Polls the server every few seconds and stops when the order is delivered, the player
+-- presses the button again, or the resource stops.
+
+local trackedOrder, trackBlip = nil, nil
+
+local function clearTrackBlip()
+    if trackBlip and DoesBlipExist(trackBlip) then RemoveBlip(trackBlip) end
+    trackBlip = nil
+end
+
+local function startTracking(orderId)
+    trackedOrder = orderId
+    CreateThread(function()
+        while trackedOrder == orderId do
+            local res = lib.callback.await('as-postalprime:trackOrder', false, { orderId = orderId })
+            if trackedOrder ~= orderId then break end
+            if not res or not res.ok or res.stage == 'done' or res.stage == 'ready' then
+                SendNUIMessage({ action = 'as-postalprime:track', orderId = orderId, stage = (res and res.stage) or 'stopped' })
+                break
+            end
+            if res.stage == 'out' and res.courier then
+                if not trackBlip or not DoesBlipExist(trackBlip) then
+                    trackBlip = AddBlipForCoord(res.courier.x, res.courier.y, res.courier.z)
+                    SetBlipSprite(trackBlip, 477)
+                    SetBlipColour(trackBlip, 5)
+                    SetBlipScale(trackBlip, 0.9)
+                    SetBlipAsShortRange(trackBlip, false)
+                    BeginTextCommandSetBlipName('STRING')
+                    AddTextComponentString(T('blip.courier'))
+                    EndTextCommandSetBlipName(trackBlip)
+                else
+                    SetBlipCoords(trackBlip, res.courier.x, res.courier.y, res.courier.z)
+                end
+            else
+                clearTrackBlip()
+            end
+            SendNUIMessage({ action = 'as-postalprime:track', orderId = orderId, stage = res.stage, eta = res.eta, distance = res.distance })
+            Wait(3000)
+        end
+        if trackedOrder == orderId or trackedOrder == nil then
+            trackedOrder = nil
+            clearTrackBlip()
+        end
+    end)
+end
+
+RegisterNUICallback('as-postalprime/track', function(data, cb)
+    cb({ ok = true })
+    if type(data) == 'table' and data.on and type(data.orderId) == 'string' then
+        clearTrackBlip()
+        startTracking(data.orderId)
+    else
+        trackedOrder = nil
+        clearTrackBlip()
+    end
+end)
+
+AddEventHandler('onResourceStop', function(name)
+    if name == GetCurrentResourceName() then clearTrackBlip() end
 end)
 
 RegisterNetEvent('as-postalprime:client:updated', function()

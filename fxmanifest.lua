@@ -18,11 +18,25 @@ shared_scripts {
 server_scripts {
     '@oxmysql/lib/MySQL.lua',
     'server/bridge.lua',
-    'server/housing.lua', -- home delivery: reads nolag_properties / qbx_properties
-    'server/store.lua',
-    'server/main.lua',
-    'server/widget.lua', -- phone widget feed (reads PP from main.lua)
-    'server/courier.lua', -- player courier job (needs main.lua's PP table)
+    'server/housing.lua',   -- home delivery: reads nolag_properties / qbx_properties
+    'server/log.lua',       -- PPLog: audit log (console / ox_lib logger / Discord webhook)
+    'server/deals.lua',     -- PPDeals: deal of the day, lightning deals, coupons
+    'server/store.lua',     -- SQL persistence
+    'server/main.lua',      -- core: the shared PP table, helpers, the app's state feed
+    'server/shop.lua',      -- checkout, cancel, returns, Plus
+    'server/lockers.lua',   -- locker doors, keypad, taking parcels
+    'server/reviews.lua',
+    'server/delivery.lua',  -- home / business delivery
+    'server/parcels.lua',   -- exports for other resources
+    'server/market.lua',    -- player marketplace
+    'server/discovery.lua', -- also-bought, bought-before, wishlist alerts
+    'server/tracking.lua',  -- live order tracking
+    'server/restock.lua',   -- automatic restock + low-stock alerts
+    'server/widget.lua',    -- phone widget feed (reads PP)
+    'server/courier.lua',   -- player courier job (needs the PP table)
+    'server/sweep.lua',     -- background sweep: ready / expire / notifications
+    'server/admin.lua',     -- /ppadmin, pprestock
+    'server/validate.lua',  -- startup config + locale check, ppcheck
 }
 
 client_scripts {
