@@ -42,6 +42,11 @@ Config = {
         cashItem = 'money',
     },
 
+    -- `icon` is the product picture: a built-in name (earbuds, phonecase, charger, watch, hoodie, cap, sneakers,
+    -- sunglasses, coffee, toolkit, lamp, plant, passport, box), or the path/URL of your own image (an .svg or .png
+    -- in this resource's ui/ folder, e.g. 'icons/mything.svg', or a full https:// / nui:// URL). An emoji still works
+    -- (the common ones map to the matching built-in picture) but looks different on every machine.
+    --
     -- No hardcoded/fake items - whatever's listed here is what's actually sellable. `item` must
     -- already exist in your inventory's item config. `baseRating`/`baseReviews` are just flavour
     -- seed numbers shown until real player reviews exist for that product - once someone actually
@@ -56,18 +61,18 @@ Config = {
     -- automatically (restockAmount = N on an item overrides the amount, 0 = never auto-restock).
     -- noDeals = true keeps an item out of the deal of the day / lightning deals.
     catalog = {
-        { id = 'earbuds',    label = 'Wireless Earbuds, Noise Cancelling', item = 'pp_earbuds',    price = 89,  icon = '🎧',  cat = 'tech',      baseRating = 4, baseReviews = 214 },
-        { id = 'phonecase',  label = 'Shockproof Phone Case',              item = 'pp_phonecase',  price = 15,  icon = '📱',  cat = 'tech',      baseRating = 5, baseReviews = 84 },
-        { id = 'charger',    label = 'Fast Charger 65W',                   item = 'pp_charger',    price = 22,  icon = '🔌',  cat = 'tech',      baseRating = 4, baseReviews = 140 },
-        { id = 'watch',      label = 'Smart Watch Series X',               item = 'pp_watch',      price = 210, icon = '⌚',  cat = 'tech',      baseRating = 4, baseReviews = 53, stock = 15 },
-        { id = 'hoodie',     label = 'Pullover Hoodie, Unisex',            item = 'pp_hoodie',     price = 48,  icon = '🧥',  cat = 'clothing',  baseRating = 5, baseReviews = 97 },
-        { id = 'cap',        label = 'Snapback Cap, Adjustable',           item = 'pp_cap',        price = 25,  icon = '🧢',  cat = 'clothing',  baseRating = 4, baseReviews = 31 },
-        { id = 'sneakers',   label = 'Running Sneakers, Lightweight',      item = 'pp_sneakers',   price = 95,  icon = '👟',  cat = 'clothing',  baseRating = 4, baseReviews = 280, stock = 25 },
-        { id = 'sunglasses', label = 'Polarized Sunglasses',               item = 'pp_sunglasses', price = 60,  icon = '🕶️',  cat = 'clothing',  baseRating = 5, baseReviews = 60 },
-        { id = 'coffee',     label = 'Coffee Beans, Dark Roast 1kg',       item = 'pp_coffee',     price = 18,  icon = '☕',  cat = 'home',      baseRating = 5, baseReviews = 330 },
-        { id = 'toolkit',    label = 'Home Toolkit, 45-Piece',             item = 'pp_toolkit',    price = 55,  icon = '🧰',  cat = 'home',      baseRating = 4, baseReviews = 71 },
-        { id = 'lamp',       label = 'LED Desk Lamp, Dimmable',            item = 'pp_lamp',       price = 32,  icon = '💡',  cat = 'home',      baseRating = 4, baseReviews = 45 },
-        { id = 'plant',      label = 'Potted Plant, Faux',                 item = 'pp_plant',      price = 20,  icon = '🪴',  cat = 'home',      baseRating = 5, baseReviews = 22 },
+        { id = 'earbuds',    label = 'Wireless Earbuds, Noise Cancelling', item = 'pp_earbuds',    price = 89,  icon = 'earbuds',  cat = 'tech',      baseRating = 4, baseReviews = 214 },
+        { id = 'phonecase',  label = 'Shockproof Phone Case',              item = 'pp_phonecase',  price = 15,  icon = 'phonecase',  cat = 'tech',      baseRating = 5, baseReviews = 84 },
+        { id = 'charger',    label = 'Fast Charger 65W',                   item = 'pp_charger',    price = 22,  icon = 'charger',  cat = 'tech',      baseRating = 4, baseReviews = 140 },
+        { id = 'watch',      label = 'Smart Watch Series X',               item = 'pp_watch',      price = 210, icon = 'watch',  cat = 'tech',      baseRating = 4, baseReviews = 53, stock = 15 },
+        { id = 'hoodie',     label = 'Pullover Hoodie, Unisex',            item = 'pp_hoodie',     price = 48,  icon = 'hoodie',  cat = 'clothing',  baseRating = 5, baseReviews = 97 },
+        { id = 'cap',        label = 'Snapback Cap, Adjustable',           item = 'pp_cap',        price = 25,  icon = 'cap',  cat = 'clothing',  baseRating = 4, baseReviews = 31 },
+        { id = 'sneakers',   label = 'Running Sneakers, Lightweight',      item = 'pp_sneakers',   price = 95,  icon = 'sneakers',  cat = 'clothing',  baseRating = 4, baseReviews = 280, stock = 25 },
+        { id = 'sunglasses', label = 'Polarized Sunglasses',               item = 'pp_sunglasses', price = 60,  icon = 'sunglasses',  cat = 'clothing',  baseRating = 5, baseReviews = 60 },
+        { id = 'coffee',     label = 'Coffee Beans, Dark Roast 1kg',       item = 'pp_coffee',     price = 18,  icon = 'coffee',  cat = 'home',      baseRating = 5, baseReviews = 330 },
+        { id = 'toolkit',    label = 'Home Toolkit, 45-Piece',             item = 'pp_toolkit',    price = 55,  icon = 'toolkit',  cat = 'home',      baseRating = 4, baseReviews = 71 },
+        { id = 'lamp',       label = 'LED Desk Lamp, Dimmable',            item = 'pp_lamp',       price = 32,  icon = 'lamp',  cat = 'home',      baseRating = 4, baseReviews = 45 },
+        { id = 'plant',      label = 'Potted Plant, Faux',                 item = 'pp_plant',      price = 20,  icon = 'plant',  cat = 'home',      baseRating = 5, baseReviews = 22 },
     },
 
     categories = {
@@ -425,8 +430,8 @@ Config = {
         maxQtyPerListing = 50,
         -- Only these items can be listed. min/maxPrice bound the unit price the seller can set.
         allowedItems = {
-            { item = 'pp_coffee',  label = 'Coffee Beans, Dark Roast 1kg', icon = '☕', minPrice = 8,  maxPrice = 60 },
-            { item = 'pp_toolkit', label = 'Home Toolkit, 45-Piece',       icon = '🧰', minPrice = 25, maxPrice = 150 },
+            { item = 'pp_coffee',  label = 'Coffee Beans, Dark Roast 1kg', icon = 'coffee', minPrice = 8,  maxPrice = 60 },
+            { item = 'pp_toolkit', label = 'Home Toolkit, 45-Piece',       icon = 'toolkit', minPrice = 25, maxPrice = 150 },
         },
     },
 }

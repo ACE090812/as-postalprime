@@ -191,6 +191,21 @@ if you're on item-based payment and don't already have one. Every `image` needs 
 your inventory's own image folder - this resource only registers behaviour, it doesn't ship item
 art.
 
+## Icons and product pictures
+
+Everything in the app is vector art, so it looks the same on every machine (emoji depend on each browser's emoji font, which
+FiveM's browser often renders badly):
+
+- **Product pictures** are SVG files in `ui/icons/` (earbuds, phonecase, charger, watch, hoodie, cap, sneakers, sunglasses,
+  coffee, toolkit, lamp, plant, passport, box). Set `icon = 'earbuds'` on a `Config.catalog` entry (and on `Config.marketplace.allowedItems`) to use
+  one. To use your own picture, drop an `.svg` / `.png` into `ui/icons/` and set `icon = 'icons/mything.svg'` - or give a full
+  `https://` / `nui://` URL. `icon` can still be an emoji: the common ones are mapped to the matching built-in picture, anything
+  else is shown as text.
+- **Interface icons** (cart, search, home, truck, shield, ...) are inline SVG. Any emoji left in a translation string or typed by a
+  player is swapped for the matching icon when the page renders, so the translation files did not need to change.
+- **Seller storefront icons** are picked from a built-in set of ten (store, wrench, burger, car, shirt, coffee, leaf, gift, package, star).
+- Parcels sent by other resources can pass `icon = 'passport'` (or any name / path above) instead of an emoji.
+
 ## Sealed parcels
 
 Collecting an order (locker or home) no longer hands over the catalog items directly - it hands

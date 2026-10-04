@@ -31,7 +31,7 @@ exports('addCatalogItem', function(entry)
     end
     local copy = {}
     for k, v in pairs(entry) do copy[k] = v end
-    copy.icon = copy.icon or '📦'
+    copy.icon = copy.icon or 'box'
     copy.cat = copy.cat or 'all'
     copy.baseRating = copy.baseRating or 4
     copy.baseReviews = copy.baseReviews or 0

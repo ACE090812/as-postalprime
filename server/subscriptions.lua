@@ -29,7 +29,7 @@ function PPSubs.stateFor(pd)
         local entry = PP.findCatalogItem(s.itemId)
         local lockerLabel = (PP.findLocker(s.lockerId) or {}).label
         list[#list + 1] = {
-            id = s.id, itemId = s.itemId, label = entry and entry.label or s.itemId, icon = entry and entry.icon or '📦',
+            id = s.id, itemId = s.itemId, label = entry and entry.label or s.itemId, icon = entry and entry.icon or 'box',
             qty = s.qty, intervalLabel = (interval(s.interval) or {}).label or s.interval, lockerLabel = lockerLabel,
             nextAt = s.nextAt * 1000, paused = s.paused or false, failures = s.failures or 0,
         }

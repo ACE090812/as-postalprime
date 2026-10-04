@@ -85,7 +85,7 @@
     }
     .promo .t { font-size: 15px; font-weight: 800; }
     .promo .s { font-size: 12px; color: #ffd8d8; margin-top: 3px; font-weight: 700; }
-    .promo .em { font-size: 30px; }
+    .promo .em { font-size: 40px; line-height: 1; }
 
     .section-title {
         font-size: 15px; font-weight: 800; margin: 14px 12px 8px; display: flex; align-items: center; justify-content: space-between;
@@ -96,7 +96,7 @@
         background: var(--elevated); border-radius: 8px; padding: 10px; cursor: pointer;
         display: flex; flex-direction: column; border: 1px solid var(--hairline);
     }
-    .card .icon { font-size: 40px; text-align: center; margin: 6px 0 8px; }
+    .card .icon { font-size: 68px; height: 68px; text-align: center; margin: 4px 0 8px; }
     .card .label { font-size: 12.5px; font-weight: 500; line-height: 1.3; min-height: 32px; color: var(--text); }
     .card .stars { color: var(--star); font-size: 11px; margin-top: 4px; }
     .card .stars span { color: var(--text-dim); margin-left: 3px; }
@@ -123,7 +123,7 @@
         display: flex; align-items: center; gap: 12px; background: var(--elevated); border-radius: 8px;
         padding: 12px; margin-bottom: 10px; border: 1px solid var(--hairline);
     }
-    .cart-item .icon { font-size: 30px; width: 42px; text-align: center; }
+    .cart-item .icon { font-size: 46px; width: 54px; height: 46px; text-align: center; flex-shrink: 0; }
     .cart-item .info { flex: 1; }
     .cart-item .name { font-size: 14px; font-weight: 600; }
     .cart-item .unit { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
@@ -326,7 +326,7 @@
         flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px;
         padding: 8px 6px; cursor: pointer; text-align: center; font-family: inherit; color: var(--text);
     }
-    .rel-tile .ic { font-size: 26px; }
+    .rel-tile .ic { font-size: 44px; height: 44px; }
     .rel-tile .nm { font-size: 11px; line-height: 1.25; margin-top: 3px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
     .rel-tile .pr { font-size: 12px; font-weight: 800; margin-top: 3px; }
     .rev-heading.rel { margin-top: 18px; }
@@ -384,6 +384,16 @@
     .shop-pill.on { border-color: var(--navy); background: #eef3ff; }
     .badge-pill { display: inline-block; font-size: 10.5px; font-weight: 800; border-radius: 4px; padding: 2px 6px; margin: 6px 6px 0 0; background: #eef3ff; color: var(--navy); }
 
+    /* UI icons (inline SVG, see svgIcon) and product art (SVG files in icons/, see pic) */
+    .ic-i { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -0.2em; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+    .ic-i.fill { fill: currentColor; stroke: none; }
+    .ic-i.amber { color: #f2a900; }
+    .pimg { display: block; width: 1em; height: 1em; object-fit: contain; margin: 0 auto; user-select: none; -webkit-user-drag: none; }
+    .pimg.inl { display: inline-block; width: 1.5em; height: 1.5em; vertical-align: -0.45em; margin: 0 6px 0 0; }
+    .icon-pick { display: flex; gap: 6px; flex-wrap: wrap; grid-column: 1 / -1; }
+    .icon-pick button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--elevated); color: var(--text-dim); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+    .icon-pick button.on { border-color: var(--navy); background: #eef3ff; color: var(--navy); }
+
     .tabbar {
         flex-shrink: 0; display: flex; border-top: 1px solid var(--hairline); background: var(--elevated);
         padding-bottom: 22px;
@@ -411,7 +421,7 @@
         width: 100%; background: var(--elevated); border-radius: 16px 16px 0 0; padding: 22px 20px 28px;
         max-height: 82vh; overflow-y: auto;
     }
-    .sheet .icon-big { font-size: 56px; text-align: center; margin-bottom: 10px; }
+    .sheet .icon-big { font-size: 104px; height: 104px; text-align: center; margin-bottom: 8px; }
     .sheet .name { font-size: 18px; font-weight: 700; text-align: center; }
     .sheet .stars { text-align: center; color: var(--star); font-size: 13px; margin-top: 6px; }
     .sheet .stars span { color: var(--text-dim); margin-left: 4px; }
@@ -627,6 +637,94 @@
     var shopFilter = '';           // marketplace storefront (seller key) being viewed
     var shopDraft = null;          // storefront edit form { name, tagline, icon }
     var statsData = null;          // lifetime spending stats (loaded when the You tab opens)
+
+    // ── icons ──────────────────────────────────────────────────────────────
+    // UI icons are inline SVG (stroke = currentColor). Emoji that still appear in text - in the translation files,
+    // or typed by a player - are swapped for the matching icon after every render (iconize), so they look the same
+    // on every machine instead of depending on the browser's emoji font.
+    var ICON_PATHS = {
+        cart: '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3h2.4l2.1 11.2a2 2 0 0 0 2 1.6h8.6a2 2 0 0 0 2-1.6L21 7H6"/>',
+        search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+        'check-circle': '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/>',
+        check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+        rocket: '<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>',
+        bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+        'bolt-fill': '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+        heart: '<path d="M12 20.5s-8-4.9-8-11A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5c0 6.1-8 11-8 11z"/>',
+        'heart-fill': '<path d="M12 20.5s-8-4.9-8-11A4.5 4.5 0 0 1 12 7a4.5 4.5 0 0 1 8 2.5c0 6.1-8 11-8 11z"/>',
+        package: '<path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5"/><path d="M12 12v9"/>',
+        home: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9.5 20v-6h5v6"/>',
+        shield: '<path d="M12 3l8 3v6c0 5-3.5 8.3-8 9.5C7.5 20.3 4 17 4 12V6z"/><path d="M8.5 12l2.5 2.5L15.5 10"/>',
+        repeat: '<path d="M17 2l3 3-3 3"/><path d="M4 11V9a4 4 0 0 1 4-4h12"/><path d="M7 22l-3-3 3-3"/><path d="M20 13v2a4 4 0 0 1-4 4H4"/>',
+        tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.3"/>',
+        store: '<path d="M4 9l1.5-5h13L20 9"/><path d="M4 9a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0A2.7 2.7 0 0 0 20 9"/><path d="M5 12v8h14v-8"/><path d="M10 20v-5h4v5"/>',
+        star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+        'star-fill': '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+        lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/><circle cx="12" cy="16" r="1.2"/>',
+        chart: '<path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>',
+        pin: '<path d="M12 21s-6.5-5.7-6.5-11a6.5 6.5 0 0 1 13 0C18.5 15.3 12 21 12 21z"/><circle cx="12" cy="10" r="2.3"/>',
+        truck: '<path d="M3 16V7h11v9"/><path d="M14 10h4l3 3.2V16h-7"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
+        gift: '<rect x="3.5" y="9" width="17" height="4" rx="1"/><path d="M5 13v7h14v-7"/><path d="M12 9v11"/><path d="M12 9c-1-4-5.5-4-5.5-1.5S10 9 12 9zm0 0c1-4 5.5-4 5.5-1.5S14 9 12 9z"/>',
+        wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+        burger: '<path d="M4 11a8 6 0 0 1 16 0z"/><path d="M3 14h18"/><path d="M4 17h16v1a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/>',
+        car: '<path d="M5 16l1.5-6h11L19 16"/><path d="M3 16h18v3H3z"/><circle cx="7" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>',
+        shirt: '<path d="M8 4l-5 3 2 4 3-1v10h8V10l3 1 2-4-5-3a4 4 0 0 1-8 0z"/>',
+        coffee: '<path d="M5 9h11v6a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4z"/><path d="M16 10h2a2.5 2.5 0 0 1 0 5h-2"/><path d="M8 3v3M12 3v3"/>',
+        leaf: '<path d="M5 20c0-9 5-15 15-15 0 10-6 15-15 15z"/><path d="M5 20c3-5 6-8 11-11"/>'
+    };
+    var ICON_CLASS = { 'bolt-fill': 'fill amber', 'heart-fill': 'fill', 'star-fill': 'fill amber', bolt: 'amber' };
+    function svgIcon(name, extra) {
+        var paths = ICON_PATHS[name] || ICON_PATHS.package;
+        return '<svg class="ic-i ' + (ICON_CLASS[name] || '') + (extra ? ' ' + extra : '') + '" viewBox="0 0 24 24" aria-hidden="true">' + paths + '</svg>';
+    }
+    // emoji -> icon name (variation selector U+FE0F is stripped before looking up)
+    var EMOJI_ICONS = {
+        '🛒': 'cart', '🔍': 'search', '✅': 'check-circle', '✓': 'check', '🚀': 'rocket', '⚡': 'bolt-fill', '❤': 'heart-fill', '🤍': 'heart',
+        '📦': 'package', '🏠': 'home', '🛡': 'shield', '🔁': 'repeat', '🏷': 'tag', '🏪': 'store', '⭐': 'star-fill', '🔐': 'lock',
+        '📊': 'chart', '📍': 'pin', '🚚': 'truck', '🎁': 'gift', '🔧': 'wrench', '🍔': 'burger', '🚗': 'car', '👕': 'shirt', '🌿': 'leaf'
+    };
+    var EMOJI_RE = new RegExp('(' + Object.keys(EMOJI_ICONS).map(function (k) { return k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')\uFE0F?', 'g');
+    function iconize(root) {
+        if (!root) return;
+        var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+            acceptNode: function (n) {
+                var p = n.parentNode;
+                if (!p || /^(SCRIPT|STYLE|TEXTAREA|OPTION|SVG)$/i.test(p.nodeName)) return NodeFilter.FILTER_REJECT;
+                EMOJI_RE.lastIndex = 0;
+                return EMOJI_RE.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+            }
+        });
+        var nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        nodes.forEach(function (n) {
+            var parts = n.nodeValue.split(EMOJI_RE);
+            var frag = document.createDocumentFragment();
+            parts.forEach(function (part, i) {
+                if (i % 2 === 0) { if (part) frag.appendChild(document.createTextNode(part)); return; }
+                var holder = document.createElement('span');
+                holder.innerHTML = svgIcon(EMOJI_ICONS[part.replace(/\uFE0F/g, '')] || 'package');
+                frag.appendChild(holder.firstChild);
+            });
+            n.parentNode.replaceChild(frag, n);
+        });
+    }
+
+    // Product art. `icon` in Config.catalog can be a built-in name ('earbuds'), a path or URL to your own image, or an
+    // emoji (legacy - the common ones map to the matching built-in art).
+    var PRODUCT_ICONS = { box: 1, cap: 1, charger: 1, coffee: 1, earbuds: 1, hoodie: 1, lamp: 1, passport: 1, phonecase: 1, plant: 1, sneakers: 1, sunglasses: 1, toolkit: 1, watch: 1 };
+    var EMOJI_PRODUCT = { '🎧': 'earbuds', '📱': 'phonecase', '🔌': 'charger', '⌚': 'watch', '🧥': 'hoodie', '🧢': 'cap', '👟': 'sneakers', '🕶': 'sunglasses', '☕': 'coffee', '🧰': 'toolkit', '💡': 'lamp', '🪴': 'plant', '📦': 'box', '🛂': 'passport' };
+    function pic(icon, cls) {
+        icon = String(icon == null ? '' : icon).replace(/\uFE0F/g, '');
+        var src = null;
+        if (PRODUCT_ICONS[icon]) src = 'icons/' + icon + '.svg';
+        else if (EMOJI_PRODUCT[icon]) src = 'icons/' + EMOJI_PRODUCT[icon] + '.svg';
+        else if (/[\/.]/.test(icon)) src = icon;
+        if (!src && !icon) src = 'icons/box.svg';
+        if (src) return '<img class="pimg' + (cls ? ' ' + cls : '') + '" src="' + esc(src) + '" alt="" draggable="false">';
+        return esc(icon); // an emoji we have no art for stays as text (iconize swaps the common ones)
+    }
+    var SHOP_ICONS = ['store', 'wrench', 'burger', 'car', 'shirt', 'coffee', 'leaf', 'gift', 'package', 'star'];
+    function shopIcon(name) { return svgIcon(SHOP_ICONS.indexOf(name) !== -1 ? name : 'store'); }
 
     function post(endpoint, data) {
         return fetch('https://' + RESOURCE + '/' + endpoint, {
@@ -1104,7 +1202,7 @@
         var lightning = state.catalog.filter(function (i) { return i.deal && i.deal.kind === 'lightning'; })[0];
         if (lightning) {
             html += '<div class="promo deal" data-detail="' + lightning.id + '"><div><div class="t">⚡ ' + esc(t('app.deal.lightning')) + '</div><div class="s">' +
-                esc(t('app.deal.lightningSub', lightning.label, lightning.deal.pct, fmtTime(lightning.deal.endsAt))) + '</div></div><div class="em">' + lightning.icon + '</div></div>';
+                esc(t('app.deal.lightningSub', lightning.label, lightning.deal.pct, fmtTime(lightning.deal.endsAt))) + '</div></div><div class="em">' + pic(lightning.icon) + '</div></div>';
         }
         html += '<div class="filters">' +
             '<button class="pill ' + (filterSale ? 'on' : '') + '" data-filter="sale">' + esc(t('app.filter.sale')) + '</button>' +
@@ -1116,7 +1214,7 @@
             }).join('') + '</select></div>';
         if (activeCategory === 'market' && state.shops && state.shops.length) {
             html += '<div class="shop-pills">' + state.shops.map(function (sh) {
-                return '<button class="shop-pill ' + (shopFilter === sh.key ? 'on' : '') + '" data-shop="' + sh.key + '">' + esc(sh.icon + ' ' + sh.name) +
+                return '<button class="shop-pill ' + (shopFilter === sh.key ? 'on' : '') + '" data-shop="' + sh.key + '">' + shopIcon(sh.icon) + ' ' + esc(sh.name) +
                     '<small>' + esc(sh.tagline || t('app.shop.items', sh.items)) + '</small></button>';
             }).join('') + '</div>';
         }
@@ -1140,7 +1238,7 @@
             var saved = inWishlist(item.id);
             html += '<div class="card" data-detail="' + item.id + '">' +
                 '<button class="heart-btn ' + (saved ? 'saved' : '') + '" data-wishlist="' + item.id + '">' + (saved ? '❤️' : '🤍') + '</button>' +
-                '<div class="icon">' + item.icon + '</div>' +
+                '<div class="icon">' + pic(item.icon) + '</div>' +
                 '<div class="label">' + item.label + '</div>' +
                 (item.seller ? '<div class="seller-tag">' + esc(t('app.soldBy', item.seller)) + '</div>'
                     : '<div class="stars">' + stars(item.rating) + '<span>' + fmtReviewCount(item.reviews) + '</span></div>') +
@@ -1169,7 +1267,7 @@
                 if (!item) return;
                 var p = fmt(item.price);
                 html += '<div class="cart-item">' +
-                    '<div class="icon">' + item.icon + '</div>' +
+                    '<div class="icon">' + pic(item.icon) + '</div>' +
                     '<div class="info"><div class="name">' + item.label + '</div><div class="unit">$' + p.whole + '.' + p.cents + ' ' + esc(t('app.each')) + ' · <span class="prime">' + esc(t('app.prime')) + '</span></div></div>' +
                     '<div class="qty-stepper">' +
                     '<button data-qty="' + id + '" data-delta="-1">−</button>' +
@@ -1427,7 +1525,7 @@
         if (m.canSell) {
             if (!sellDraft.item && m.allowed.length) sellDraft.item = m.allowed[0].item;
             html += '<div class="sell-form"><select id="sellItem">' + m.allowed.map(function (a) {
-                return '<option value="' + a.item + '"' + (sellDraft.item === a.item ? ' selected' : '') + '>' + esc(a.icon + ' ' + a.label + ' ($' + a.minPrice + '–$' + a.maxPrice + ')') + '</option>';
+                return '<option value="' + a.item + '"' + (sellDraft.item === a.item ? ' selected' : '') + '>' + esc(a.label + ' ($' + a.minPrice + '–$' + a.maxPrice + ')') + '</option>';
             }).join('') + '</select>' +
                 '<input id="sellQty" type="number" min="1" max="' + m.maxQty + '" placeholder="' + esc(t('app.sell.qty')) + '" value="' + sellDraft.qty + '">' +
                 '<input id="sellPrice" type="number" min="0" step="0.01" placeholder="' + esc(t('app.sell.price')) + '" value="' + sellDraft.price + '">' +
@@ -1436,15 +1534,16 @@
             html += '<div class="sell-sub" style="margin-top:10px;">' + esc(t('app.sell.jobOnly')) + '</div>';
         }
         if (m.canSell) {
-            if (!shopDraft) shopDraft = { name: (m.shop && m.shop.name) || '', tagline: (m.shop && m.shop.tagline) || '', icon: (m.shop && m.shop.icon) || '🏪' };
+            if (!shopDraft) shopDraft = { name: (m.shop && m.shop.name) || '', tagline: (m.shop && m.shop.tagline) || '', icon: (m.shop && m.shop.icon) || 'store' };
             html += '<div class="sell-sub" style="margin-top:14px;font-weight:700;">' + esc(t('app.shop.title')) + '</div><div class="sell-form">' +
-                '<input id="shopName" maxlength="30" placeholder="' + esc(t('app.shop.name')) + '" value="' + esc(shopDraft.name) + '">' +
-                '<input id="shopIcon" maxlength="4" placeholder="🏪" value="' + esc(shopDraft.icon) + '">' +
+                '<input id="shopName" class="wide" style="grid-column:1/-1;" maxlength="30" placeholder="' + esc(t('app.shop.name')) + '" value="' + esc(shopDraft.name) + '">' +
+ 
+                '<div class="icon-pick">' + SHOP_ICONS.map(function (n) { return '<button data-shopicon="' + n + '" class="' + (shopDraft.icon === n ? 'on' : '') + '" aria-label="' + n + '">' + svgIcon(n) + '</button>'; }).join('') + '</div>' +
                 '<input id="shopTagline" class="wide" style="grid-column:1/-1;" maxlength="60" placeholder="' + esc(t('app.shop.tagline')) + '" value="' + esc(shopDraft.tagline) + '">' +
                 '<button class="sell-btn sell-list-btn" id="shopSave" ' + (busy ? 'disabled' : '') + '>' + esc(t('app.shop.save')) + '</button></div>';
         }
         (m.mine || []).forEach(function (l) {
-            html += '<div class="sell-listing"><div class="nm">' + esc(l.icon + ' ' + l.label) + '<small>' + esc(t('app.sell.listing', l.qty, l.price.toFixed(2))) + '</small></div>' +
+            html += '<div class="sell-listing"><div class="nm">' + pic(l.icon, 'inl') + esc(l.label) + '<small>' + esc(t('app.sell.listing', l.qty, l.price.toFixed(2))) + '</small></div>' +
                 '<button data-sellremove="' + l.id + '">' + esc(t('app.sell.remove')) + '</button></div>';
         });
         return html + '</div>';
@@ -1474,7 +1573,7 @@
         if (!sb || !sb.enabled || !sb.list.length) return '';
         var html = '<div class="info-card"><div class="ttl">🔁 ' + esc(t('app.subs.title')) + '</div>';
         sb.list.forEach(function (x) {
-            html += '<div class="row"><div class="nm">' + esc(x.icon + ' ' + x.qty + '× ' + x.label) +
+            html += '<div class="row"><div class="nm">' + pic(x.icon, 'inl') + esc(x.qty + '× ' + x.label) +
                 '<small>' + esc(x.paused ? t('app.subs.paused') : t('app.subs.next', x.intervalLabel, fmtDate(x.nextAt))) + ' · ' + esc(x.lockerLabel || '') + '</small></div>' +
                 '<button data-subtoggle="' + x.id + '">' + esc(x.paused ? t('app.subs.resume') : t('app.subs.pause')) + '</button>' +
                 '<button class="warn" data-subcancel="' + x.id + '">' + esc(t('app.subs.cancel')) + '</button></div>';
@@ -1516,7 +1615,7 @@
         }
         if (s.top.length) {
             html += '<div class="sub" style="margin-top:12px;font-weight:700;">' + esc(t('app.stats.top')) + '</div>' +
-                s.top.map(function (x) { return '<div class="bar-row"><span class="lbl" style="width:auto;flex:1;">' + esc(x.icon + ' ' + x.label) + '</span><span class="val">×' + x.qty + '</span></div>'; }).join('');
+                s.top.map(function (x) { return '<div class="bar-row"><span class="lbl" style="width:auto;flex:1;">' + pic(x.icon, 'inl') + esc(x.label) + '</span><span class="val">×' + x.qty + '</span></div>'; }).join('');
         }
         if (s.returned > 0) html += '<div class="sub" style="margin-top:10px;">' + esc(t('app.stats.returned', s.returned.toFixed(2))) + '</div>';
         return html + '</div>';
@@ -1571,7 +1670,7 @@
             '<div class="sheet">' +
             '<button class="close-x" id="closeSheet">✕</button>' +
             '<button class="heart-btn ' + (savedDetail ? 'saved' : '') + '" data-wishlist="' + item.id + '">' + (savedDetail ? '❤️' : '🤍') + '</button>' +
-            '<div class="icon-big">' + item.icon + '</div>' +
+            '<div class="icon-big">' + pic(item.icon) + '</div>' +
             '<div class="name">' + item.label + '</div>' +
             (item.seller ? '<div class="seller-tag" style="text-align:center;">' + esc(t('app.soldBy', item.seller)) + '</div>'
                 : '<div class="stars">' + stars(item.rating) + '<span>' + esc(t('app.ratings', fmtReviewCount(item.reviews))) + '</span></div>') +
@@ -1590,7 +1689,7 @@
             renderSubscribeBox(item) +
             (rel.list.length ? '<div class="rev-heading rel">' + esc(rel.byPurchases ? t('app.alsoBought') : t('app.moreLike')) + '</div><div class="rel-row">' +
                 rel.list.map(function (r) {
-                    return '<button class="rel-tile" data-related="' + r.id + '"><div class="ic">' + r.icon + '</div><div class="nm">' + esc(r.label) + '</div><div class="pr">$' + r.price.toFixed(2) + '</div></button>';
+                    return '<button class="rel-tile" data-related="' + r.id + '"><div class="ic">' + pic(r.icon) + '</div><div class="nm">' + esc(r.label) + '</div><div class="pr">$' + r.price.toFixed(2) + '</div></button>';
                 }).join('') + '</div>' : '') +
             renderReviews(item) +
             '</div></div>';
@@ -1663,7 +1762,7 @@
             '<div class="sheet review-composer">' +
             '<button class="close-x" id="closeReview">✕</button>' +
             '<div class="rc-title">' + esc(t('app.rc.title')) + '</div>' +
-            '<div class="rc-item">' + item.icon + ' ' + item.label + '</div>' +
+            '<div class="rc-item">' + pic(item.icon, 'inl') + item.label + '</div>' +
             '<div class="rc-stars">' + starsHtml + '</div>' +
             '<input type="text" id="rcTitleInput" placeholder="' + esc(t('app.rc.titlePlaceholder')) + '" value="' + (reviewDraft.title || '').replace(/"/g, '&quot;') + '">' +
             '<textarea id="rcBodyInput" placeholder="' + esc(t('app.rc.bodyPlaceholder')) + '">' + (reviewDraft.body || '') + '</textarea>' +
@@ -1691,6 +1790,8 @@
         el.innerHTML = '<div class="scroll">' + body + '</div>' + renderDetailSheet() + renderReviewComposer() + (toastMsg ? '<div class="toast">' + toastMsg + '</div>' : '');
         document.getElementById('tabbar').innerHTML = renderTabbar();
         document.getElementById('tabbar').style.display = (tab === 'checkout') ? 'none' : 'flex';
+        iconize(document.getElementById('header'));
+        iconize(el);
         wire();
     }
 
@@ -1822,8 +1923,9 @@
 
         var shopName = document.getElementById('shopName');
         if (shopName) shopName.oninput = function (e) { shopDraft.name = e.target.value; };
-        var shopIcon = document.getElementById('shopIcon');
-        if (shopIcon) shopIcon.oninput = function (e) { shopDraft.icon = e.target.value; };
+        root.querySelectorAll('[data-shopicon]').forEach(function (el) {
+            el.onclick = function () { shopDraft.icon = el.getAttribute('data-shopicon'); render(); };
+        });
         var shopTagline = document.getElementById('shopTagline');
         if (shopTagline) shopTagline.oninput = function (e) { shopDraft.tagline = e.target.value; };
         var shopSave = document.getElementById('shopSave');

@@ -35,6 +35,9 @@ local function listingId(key)
     return n and tonumber(n) or nil
 end
 
+local SHOP_ICONS = {}
+for _, n in ipairs({ 'store', 'wrench', 'burger', 'car', 'shirt', 'coffee', 'leaf', 'gift', 'package', 'star' }) do SHOP_ICONS[n] = true end
+
 -- A stable, opaque id for a seller that is safe to send to clients (never the citizen id).
 local function sellerKey(cid)
     local h = 5381
@@ -133,7 +136,7 @@ function PPMarket.stateFor(source, cid, pd)
         balance = md.balance or 0,
         earned = md.earned or 0,
         sold = md.sold or 0,
-        shop = md.shop or { name = '', tagline = '', icon = '🏪' },
+        shop = md.shop and { name = md.shop.name, tagline = md.shop.tagline, icon = SHOP_ICONS[md.shop.icon] and md.shop.icon or 'store' } or { name = '', tagline = '', icon = 'store' },
     }
 end
 
@@ -146,7 +149,7 @@ function PPMarket.shops()
             if not by[key] then
                 local shop = shopOf(l.seller)
                 by[key] = { key = key, name = (shop and shop.name ~= '' and shop.name) or l.sellerName, tagline = shop and shop.tagline or '',
-                            icon = (shop and shop.icon) or '🏪', items = 0 }
+                            icon = (shop and SHOP_ICONS[shop.icon] and shop.icon) or 'store', items = 0 }
                 order[#order + 1] = key
             end
             by[key].items = by[key].items + 1
@@ -201,7 +204,7 @@ lib.callback.register('as-postalprime:market:list', function(source, data)
     local id = PPStore.nextListingId()
     PPStore.listings[id] = {
         id = id, seller = cid, sellerName = PPBridge.getCharacterName(source), item = def.item, label = def.label,
-        icon = def.icon or '📦', price = price, qty = qty, createdAt = os.time(),
+        icon = def.icon or 'box', price = price, qty = qty, createdAt = os.time(),
     }
     PPStore.saveListing(id)
     PPLog.log('listing', source, ('listed %dx %s at $%s'):format(qty, def.label, price), { listing = id })
@@ -239,10 +242,10 @@ lib.callback.register('as-postalprime:market:setShop', function(source, data)
     end
     local pd = PPStore.getPlayer(cid)
     local md = sellerData(pd)
-    md.shop = {
-        name = clean(data.name, 30), tagline = clean(data.tagline, 60),
-        icon = (clean(data.icon, 2) ~= '' and clean(data.icon, 2)) or '🏪',
-    }
+    -- The storefront icon is picked from a fixed list of built-in icons (the app shows them as vector art).
+    local icon = tostring(data.icon or '')
+    if not SHOP_ICONS[icon] then icon = 'store' end
+    md.shop = { name = clean(data.name, 30), tagline = clean(data.tagline, 60), icon = icon }
     PPStore.savePlayer(cid)
     PPLog.log('listing', source, ('set storefront "%s"'):format(md.shop.name), { citizen = cid })
     return { ok = true, market = PPMarket.stateFor(source, cid, pd) }

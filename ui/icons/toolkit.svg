@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96"><defs><linearGradient id="c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ee3a46"/><stop offset="1" stop-color="#b8161f"/></linearGradient></defs><ellipse cx="48" cy="86" rx="28" ry="4.5" fill="#0f1b33" opacity=".13"/>
+<path d="M34 28v-8c0-3 2-5 5-5h18c3 0 5 2 5 5v8" stroke="#2b3550" stroke-width="5" fill="none" stroke-linecap="round"/>
+<rect x="10" y="28" width="76" height="52" rx="8" fill="url(#c)"/>
+<rect x="10" y="28" width="76" height="16" rx="8" fill="#fff" opacity=".12"/>
+<path d="M10 50h76" stroke="#7d1018" stroke-width="2"/>
+<rect x="38" y="46" width="20" height="12" rx="3" fill="#cfd6e4" stroke="#8d99b3" stroke-width="1.5"/>
+<rect x="16" y="34" width="6" height="6" rx="3" fill="#fff" opacity=".6"/><rect x="74" y="34" width="6" height="6" rx="3" fill="#fff" opacity=".6"/>
+<path d="M26 62l8 8M34 62l-8 8" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+<circle cx="66" cy="68" r="6" fill="none" stroke="#fff" stroke-width="3" opacity=".8"/><path d="M66 62v-4" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+</svg>

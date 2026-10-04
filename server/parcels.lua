@@ -16,7 +16,7 @@ local onlineSources = PP.onlineSources
 --       sender = 'Los Santos Passport Office',
 --       lockerId = 'some_locker_id',         -- one of exports['as-postalprime']:getLockers()
 --       prepSeconds = 180, expireSeconds = 172800,   -- optional
---       items = { { item = 'passport', label = 'Passport', icon = '🛂', qty = 1, metadata = { ... } } },
+--       items = { { item = 'passport', label = 'Passport', icon = 'passport', qty = 1, metadata = { ... } } },
 --   })
 --   delivery = 'business' + dropoff = { key, label, job, coords, stash } delivers to a business and fills its stash (see README).
 --   err is 'busy' when the player already has a pile of uncollected parcels (try again later), 'bad_locker', 'bad_item' or 'bad_request'.
@@ -72,7 +72,7 @@ local function createParcel(cid, parcel)
         if type(it) ~= 'table' or type(it.item) ~= 'string' or it.item == '' then return false, 'bad_item' end
         items[#items + 1] = {
             id = 'parcel:' .. it.item, item = it.item,
-            label = tostring(it.label or it.item):sub(1, 60), icon = tostring(it.icon or '📦'):sub(1, 8),
+            label = tostring(it.label or it.item):sub(1, 60), icon = tostring(it.icon or 'box'):sub(1, 120),
             price = 0, qty = math.max(1, math.floor(tonumber(it.qty) or 1)), metadata = it.metadata,
         }
     end
