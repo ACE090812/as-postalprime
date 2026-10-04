@@ -1507,7 +1507,7 @@
     function renderStats() {
         if (!statsData) return '';
         var s = statsData;
-        var html = '<div class="info-card"><div class="ttl">📊 ' + esc(t('app.stats.title')) + '</div>' +
+        var html = '<div class="info-card" style="margin-top:12px;"><div class="ttl">📊 ' + esc(t('app.stats.title')) + '</div>' +
             '<div class="sub">' + esc(t('app.stats.sub', s.orders, s.spent.toFixed(2), s.saved.toFixed(2))) + '</div>' +
             '<div class="sub" style="margin-top:10px;font-weight:700;">' + esc(t('app.stats.months')) + '</div>' +
             bars(s.months.map(function (m) { return { label: m.label, total: m.total }; }), function (v) { return '$' + Math.round(v); });

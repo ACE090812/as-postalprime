@@ -5,6 +5,25 @@ real phone through `exports['sd-phone']:addCustomApp` - no sd-phone core files t
 browse a general goods catalog, check out and pick a pickup locker, then physically collect the
 order from that locker with `as-interact`, `ox_target` or `qb-target` and a pickup code shown in the app.
 
+## Screenshots
+
+Captured from the real `ui/index.html` with sample data (what you see in-game depends on your catalog, lockers and config).
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/01-home-deals.png" width="230" alt="Home with a lightning deal, deal tags, filters and sorting"><br><sub><b>Home</b> - deals, filters, sorting</sub></td>
+    <td align="center"><img src="docs/screenshots/02-product-subscribe.png" width="230" alt="Product page with subscribe and save"><br><sub><b>Product</b> - subscribe &amp; save, also bought</sub></td>
+    <td align="center"><img src="docs/screenshots/03-marketplace.png" width="230" alt="Marketplace with seller storefronts"><br><sub><b>Marketplace</b> - seller storefronts</sub></td>
+    <td align="center"><img src="docs/screenshots/04-checkout.png" width="230" alt="Checkout with express shipping, insurance, loyalty points and coupon"><br><sub><b>Checkout</b> - express, insurance, points, coupon</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/05-orders.png" width="230" alt="Orders with pickup code countdown, badges and tracking"><br><sub><b>Orders</b> - pickup code, badges, tracking</sub></td>
+    <td align="center"><img src="docs/screenshots/06-returns.png" width="230" alt="Returning items from a collected order"><br><sub><b>Returns</b> - return collected items</sub></td>
+    <td align="center"><img src="docs/screenshots/07-you-tab.png" width="230" alt="You tab with loyalty, subscriptions and locker rentals"><br><sub><b>You</b> - loyalty, subscriptions, rentals, selling</sub></td>
+    <td align="center"><img src="docs/screenshots/08-stats.png" width="230" alt="Spending stats"><br><sub><b>Stats</b> - your spending</sub></td>
+  </tr>
+</table>
+
 ## Before you start it
 
 1. **Ensure order**: this resource must start *after* `ox_lib`, `oxmysql`, `sd-phone`,
