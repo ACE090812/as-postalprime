@@ -83,11 +83,43 @@ function PP.refundCid(cid, amount)
     if src then refundPlayer(src, amount) else PP.owePlayer(cid, amount) end
 end
 
+-- Phone notifications for someone who is offline are queued on their record and delivered the next time they are around.
+local function deliverPendingNotifs(source, cid)
+    local pd = PPStore.players[cid]
+    local queue = pd and pd.pendingNotifs
+    if not queue or #queue == 0 then return end
+    pd.pendingNotifs = nil
+    PPStore.markDirty(cid)
+    for _, n in ipairs(queue) do
+        if os.time() - (n.at or 0) < 172800 then pushPhoneNotification(source, n.title, n.body) end
+    end
+end
+
+PP.deliverPendingNotifs = deliverPendingNotifs
+
+-- Notify a character by id: straight away if online, otherwise queued (max 8, dropped after 48h).
+function PP.notifyCid(cid, title, body)
+    local src = onlineSources[cid]
+    if src then return pushPhoneNotification(src, title, body) end
+    local pd = PPStore.players[cid]
+    if not pd then return end
+    pd.pendingNotifs = pd.pendingNotifs or {}
+    pd.pendingNotifs[#pd.pendingNotifs + 1] = { title = title, body = body, at = os.time() }
+    while #pd.pendingNotifs > 8 do table.remove(pd.pendingNotifs, 1) end
+    PPStore.markDirty(cid)
+end
+
+function PP.notifyOrderCid(cid, order, title, body)
+    if order and order.hidden then return end
+    PP.notifyCid(cid, title, body)
+end
+
 local function track(source)
     local cid = PPBridge.getIdentifier(source)
     if cid then
         onlineSources[cid] = source
         applyPendingRefund(source, cid)
+        deliverPendingNotifs(source, cid)
     end
     return cid
 end
@@ -290,11 +322,18 @@ local function returnableQty(order, it, now)
     return math.max(0, (tonumber(it.qty) or 0) - (tonumber(it.returned) or 0))
 end
 
--- Share of an item's price actually paid (a coupon spreads its discount over the whole items total).
+-- What was paid for the ITEMS of an order (after coupon and points discounts; fees excluded).
+local function itemsPaid(order)
+    local total = tonumber(order.itemsTotal) or 0
+    return math.max(0, total - (tonumber(order.discount) or 0) - (tonumber(order.pointsDiscount) or 0))
+end
+PP.itemsPaid = itemsPaid
+
+-- Share of an item's price actually paid (a discount is spread over the whole items total).
 local function paidRatio(order)
     local total = tonumber(order.itemsTotal) or 0
     if total <= 0 then return 1 end
-    return math.max(0, (total - (tonumber(order.discount) or 0)) / total)
+    return itemsPaid(order) / total
 end
 
 local function returnUnitRefund(order, it)
@@ -327,6 +366,14 @@ local function sanitizeOrder(order, cid)
         discount = order.discount or 0,
         coupon = order.coupon,
         deliveryFee = order.deliveryFee or 0,
+        expressFee = order.expressFee,
+        insured = order.insured or nil,
+        insuranceFee = order.insuranceFee,
+        insurancePaid = order.insurancePaid,
+        pointsUsed = order.pointsUsed,
+        pointsDiscount = order.pointsDiscount,
+        pointsEarned = order.pointsEarned,
+        subscription = order.subscription and true or nil,
         total = order.total,
         placedAt = order.placedAt * 1000,
         readyAt = order.readyAt * 1000,
@@ -462,6 +509,19 @@ lib.callback.register('as-postalprime:getState', function(source)
         playerName = PPBridge.getCharacterName(source),
         maxActive = Config.order.maxActive or 3,
         market = PPMarket and PPMarket.stateFor(source, cid, pd) or nil,
+        shops = PPMarket and PPMarket.enabled() and PPMarket.shops() or {},
+        loyalty = PPLoyalty and PPLoyalty.stateFor(pd) or { enabled = false },
+        subs = PPSubs and PPSubs.stateFor(pd) or { enabled = false },
+        rentals = PPRentals and PPRentals.stateFor(cid) or { enabled = false },
+        shipping = {
+            express = (Config.shipping and Config.shipping.express and Config.shipping.express.enabled ~= false) and {
+                fee = Config.shipping.express.fee, plusFee = Config.shipping.express.plusFee or Config.shipping.express.fee,
+                prepSeconds = Config.shipping.express.prepSeconds,
+            } or nil,
+        },
+        insurance = (Config.insurance and Config.insurance.enabled ~= false) and {
+            pct = Config.insurance.pct, minFee = Config.insurance.minFee, maxFee = Config.insurance.maxFee,
+        } or nil,
         plus = {
             active = isPlusActive(pd),
             expiresAt = (pd.plus and pd.plus.expiresAt) and (pd.plus.expiresAt * 1000) or nil,

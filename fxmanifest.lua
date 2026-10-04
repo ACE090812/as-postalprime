@@ -28,13 +28,19 @@ server_scripts {
     'server/reviews.lua',
     'server/delivery.lua',  -- home / business delivery
     'server/parcels.lua',   -- exports for other resources
-    'server/market.lua',    -- player marketplace
+    'server/market.lua',    -- player marketplace + storefronts
+    'server/loyalty.lua',   -- loyalty points and tiers
+    'server/stats.lua',     -- personal spending stats + server-wide daily counters
+    'server/subscriptions.lua', -- subscribe & save
+    'server/rentals.lua',   -- locker rentals (ox_inventory stash)
     'server/discovery.lua', -- also-bought, bought-before, wishlist alerts
     'server/tracking.lua',  -- live order tracking
     'server/restock.lua',   -- automatic restock + low-stock alerts
     'server/widget.lua',    -- phone widget feed (reads PP)
     'server/courier.lua',   -- player courier job (needs the PP table)
     'server/sweep.lua',     -- background sweep: ready / expire / notifications
+    'server/repair.lua',    -- /ppadmin repair
+    'server/api.lua',       -- more exports for other resources
     'server/admin.lua',     -- /ppadmin, pprestock
     'server/validate.lua',  -- startup config + locale check, ppcheck
 }

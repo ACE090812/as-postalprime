@@ -346,6 +346,73 @@ Config = {
         wishlistAlerts = true,
     },
 
+    -- ─── Shipping speed ──────────────────────────────────────────────────────
+    -- Express: the order skips the queue and is ready after prepSeconds (instead of the normal / Plus prep time) for an
+    -- extra fee. Postal Prime Plus members pay plusFee instead.
+    shipping = {
+        express = { enabled = true, prepSeconds = 30, fee = 20, plusFee = 10 },
+    },
+
+    -- ─── Delivery insurance (home delivery only) ─────────────────────────────
+    -- An optional add-on at checkout: fee = pct of the items total (between minFee and maxFee). If an insured doorstep
+    -- parcel is taken by SOMEONE ELSE, the owner is refunded what they paid for the items automatically.
+    insurance = {
+        enabled = true,
+        pct = 5,
+        minFee = 3,
+        maxFee = 100,
+    },
+
+    -- ─── Loyalty points ──────────────────────────────────────────────────────
+    -- Earned when you collect an order: pointsPerDollar x what you paid for the items x your tier's multiplier. Tiers
+    -- come from points earned over your lifetime (spending points never lowers your tier). Points are redeemed at
+    -- checkout: pointsPerDollar of them = $1 off, up to maxPct of the items total.
+    loyalty = {
+        enabled = true,
+        pointsPerDollar = 1,
+        tiers = {
+            { name = 'Bronze',   from = 0,    multiplier = 1.0 },
+            { name = 'Silver',   from = 500,  multiplier = 1.25 },
+            { name = 'Gold',     from = 2000, multiplier = 1.5 },
+            { name = 'Platinum', from = 5000, multiplier = 2.0 },
+        },
+        redeem = { pointsPerDollar = 100, maxPct = 50, minPoints = 100 },
+    },
+
+    -- ─── Subscribe & save ────────────────────────────────────────────────────
+    -- A catalog item that is ordered again automatically to a locker. Charged when it is due and the player is online
+    -- (a missed one waits for them). Not enough cash retries every retryMinutes; after maxFailures it is paused.
+    subscriptions = {
+        enabled = true,
+        maxPerPlayer = 3,
+        discountPct = 5,
+        plusDiscountPct = 10,
+        retryMinutes = 30,
+        maxFailures = 3,
+        intervals = {
+            { id = 'daily',    label = 'Every day',     hours = 24 },
+            { id = 'weekly',   label = 'Every week',    hours = 168 },
+            { id = 'biweekly', label = 'Every 2 weeks', hours = 336 },
+        },
+    },
+
+    -- ─── Locker rentals ──────────────────────────────────────────────────────
+    -- Rent a private storage door at a locker for a few days. The renter gets a 6-digit code (they can share it or
+    -- change it); entering it at that locker's keypad opens the storage. Needs ox_inventory (it uses a stash).
+    -- When a rental runs out the code stops working; for graceHours the renter can still extend it, after that the rental
+    -- ends. clearOnExpire = true also wipes whatever was left inside (false keeps the stash untouched but unreachable).
+    rentals = {
+        enabled = true,
+        pricePerDay = 50,
+        maxDays = 7,           -- per rent / extend
+        maxPerPlayer = 2,
+        maxPerLocker = 10,
+        graceHours = 24,
+        slots = 15,
+        weight = 50000,
+        clearOnExpire = false,
+    },
+
     -- ─── Marketplace: players sell through Postal Prime ──────────────────────
     -- Players with one of these framework jobs can list stock from their own inventory (the items are held in escrow
     -- until sold or the listing is removed). Buyers see the listings in the shop and checkout works as normal; the

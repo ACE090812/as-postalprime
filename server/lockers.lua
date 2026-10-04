@@ -169,36 +169,53 @@ lib.callback.register('as-postalprime:collect', function(source, data)
     local locked = lockoutSeconds(cid, tostring(data.lockerId))
     if locked then return { ok = false, error = T('err.lockedOut', locked) } end
 
+    local entered = (tostring(data.code or ''):gsub('%D', ''))
     local pd = PPStore.getPlayer(cid)
+
+    -- Find the order this code is for: one of the caller's own orders that is ready at THIS locker. When there is
+    -- none, `reason` says why (shown to the player).
+    local order, reason
     local list = eachOrder(pd)
-    if #list == 0 then return { ok = false, error = T('err.noOrderWaiting') } end
-
-    -- The player can have a shop order and parcels waiting at once: pick the one that is ready for a
-    -- locker, is at THIS locker and matches the code.
-    local ready, homeReady = {}, false
-    for _, o in ipairs(list) do
-        if o.ready and not o.collected and not o.expired then
-            if o.delivery == 'home' then homeReady = true else ready[#ready + 1] = o end
+    if #list == 0 then
+        reason = 'err.noOrderWaiting'
+    else
+        -- The player can have a shop order and parcels waiting at once: pick the one that is ready for a
+        -- locker, is at THIS locker and matches the code.
+        local ready, homeReady = {}, false
+        for _, o in ipairs(list) do
+            if o.ready and not o.collected and not o.expired then
+                if o.delivery == 'home' then homeReady = true else ready[#ready + 1] = o end
+            end
+        end
+        if #ready == 0 then
+            reason = homeReady and 'err.homeDelivered' or 'err.stillPreparing'
+        else
+            local here = {}
+            for _, o in ipairs(ready) do
+                if o.lockerId == data.lockerId then here[#here + 1] = o end
+            end
+            if #here == 0 then
+                reason = 'err.wrongLocker'
+            elseif entered ~= '' then
+                for _, o in ipairs(here) do
+                    if entered == o.code then order = o break end
+                end
+            end
         end
     end
-    if #ready == 0 then
-        if homeReady then return { ok = false, error = T('err.homeDelivered') } end
-        return { ok = false, error = T('err.stillPreparing') }
-    end
-    local here = {}
-    for _, o in ipairs(ready) do
-        if o.lockerId == data.lockerId then here[#here + 1] = o end
-    end
-    if #here == 0 then return { ok = false, error = T('err.wrongLocker') } end
 
-    local entered = tostring(data.code or ''):gsub('%D', '')
-    local order
-    if entered ~= '' then
-        for _, o in ipairs(here) do
-            if entered == o.code then order = o break end
-        end
-    end
     if not order then
+        -- A rented locker's code (anyone holding it can use it) opens that rental's storage instead.
+        local rental = PPRentals and PPRentals.match(data.lockerId, entered)
+        if rental then
+            clearFails(cid)
+            PPRentals.open(source, rental)
+            return { ok = true, rental = true }
+        end
+        -- With rentals at this locker a code could belong to somebody else's rental, so EVERY failed attempt counts and
+        -- the answer never says why (it would hint at what exists).
+        local rentalsHere = PPRentals and PPRentals.hasAt(data.lockerId)
+        if reason and not (rentalsHere and entered ~= '') then return { ok = false, error = T(reason) } end
         local tripped = recordWrongCode(source, cid, data.lockerId)
         if tripped then return { ok = false, error = T('err.lockedOut', tripped) } end
         return { ok = false, error = T('err.wrongCode') }
@@ -228,17 +245,25 @@ lib.callback.register('as-postalprime:collect', function(source, data)
     return { ok = true, doorSlot = order.doorSlot }
 end)
 
+function PP.cantCarry(source)
+    TriggerClientEvent('as-postalprime:toast', source, {
+        title = T('app.name'), description = T('toast.cantCarry'), type = 'error',
+    })
+end
+
 -- Random "arrived damaged" event (Config.returns.damagedChance): the items are fine, the customer gets a goodwill
 -- refund of damagedRefundPct of what they paid for the items. Only ever on paid shop orders.
 function PP.rollDamaged(source, order)
     local r = Config.returns
     if not r or (r.damagedChance or 0) <= 0 or order.parcel or order.takenBy then return end
-    local paid = PPDeals.round2((order.itemsTotal or 0) - (order.discount or 0))
+    local paid = PP.itemsPaid(order)
     if paid <= 0 or math.random(100) > r.damagedChance then return end
     local refund = PPDeals.round2(paid * (r.damagedRefundPct or 25) / 100)
     if refund <= 0 then return end
     order.damaged = refund
     PP.pay(source, refund)
+    PPStats.bump('damaged', 1)
+    PPStats.bump('refunded', refund)
     PPLog.log('damaged', source, ('parcel %s arrived damaged, $%s goodwill refund'):format(order.id, refund), { order = order.id })
     PP.notify(source, T('notif.damaged.title'), T('notif.damaged.body', refund))
 end
@@ -263,12 +288,23 @@ AddEventHandler('as-postalprime:takeBox', function(lockerId, doorSlot)
         return
     end
 
-    if (Config.lockerWall.giveBoxItem ~= false) then
+    -- A full inventory must never eat an order: check first, and leave the door open so they can try again.
+    local useBox = Config.lockerWall.giveBoxItem ~= false and PPBridge.supportsMetadata()
+    local boxItem = useBox and ('pp_parcel_' .. (order.boxSize or orderBoxSize(order))) or nil
+    if useBox then
+        if not PPBridge.canCarry(source, boxItem, 1) then return PP.cantCarry(source) end
+    else
+        for _, it in ipairs(order.items) do
+            local entry = findCatalogItem(it.id)
+            if not PPBridge.canCarry(source, entry and entry.item or it.item or it.id, it.qty) then return PP.cantCarry(source) end
+        end
+    end
+
+    if useBox then
         -- One sealed box, matching whichever size door/box it was assigned. The box holds the real
         -- items in its own metadata; PPBridge.registerUsable('pp_parcel_' .. size, ...) below unpacks
         -- them the moment the player uses it.
-        local boxItem = 'pp_parcel_' .. (order.boxSize or orderBoxSize(order))
-        PPBridge.addItem(source, boxItem, 1, { orderId = order.id, items = order.items })
+        if not PPBridge.addItem(source, boxItem, 1, { orderId = order.id, items = order.items }) then return PP.cantCarry(source) end
     else
         for _, it in ipairs(order.items) do
             local entry = findCatalogItem(it.id)
@@ -303,21 +339,28 @@ end)
 local function openParcelBox(source, meta)
     if type(meta) ~= 'table' or type(meta.items) ~= 'table' then
         print(('[as-postalprime] a pp_parcel box was used by source %s with no/garbled metadata - nothing to unpack (were older boxes given out before giveBoxItem was turned on?).'):format(tostring(source)))
-        return
+        return false
     end
+    local names = {}
     for _, it in ipairs(meta.items) do
         local entry = findCatalogItem(it.id)
         local itemName = entry and entry.item or it.item or it.id
-        PPBridge.addItem(source, itemName, it.qty, it.metadata)
+        names[#names + 1] = { name = itemName, qty = it.qty, metadata = it.metadata }
+        if not PPBridge.canCarry(source, itemName, it.qty) then
+            PP.cantCarry(source) -- the box stays in the inventory
+            return false
+        end
     end
+    for _, n in ipairs(names) do PPBridge.addItem(source, n.name, n.qty, n.metadata) end
     TriggerClientEvent('as-postalprime:toast', source, {
         title = T('app.name'), description = T('toast.parcelOpened'), type = 'success',
     })
+    return true
 end
 
 for _, size in ipairs({ 's', 'm', 'l', 'xl' }) do
     PPBridge.registerUsable('pp_parcel_' .. size, function(source, meta, removeSelf)
-        openParcelBox(source, meta)
+        if not openParcelBox(source, meta) then return end
         -- Removes exactly the copy that was used, not just any pp_parcel_<size> the player is
         -- carrying - important if they're holding two boxes of the same size with different contents.
         if removeSelf then removeSelf() else PPBridge.removeItem(source, 'pp_parcel_' .. size, 1) end

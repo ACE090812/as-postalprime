@@ -1,5 +1,11 @@
 PPBridge = {}
 
+local function detectFrameworkName()
+    if GetResourceState('qbx_core') == 'started' or GetResourceState('qb-core') == 'started' then return 'qb' end
+    if GetResourceState('es_extended') == 'started' then return 'esx' end
+    return 'standalone'
+end
+
 local function detectFramework()
     if Config.framework ~= 'auto' then return Config.framework end
     if GetResourceState('qbx_core') == 'started' then return 'qbx' end
@@ -12,6 +18,8 @@ local function detectInventory()
     if Config.inventory ~= 'auto' then return Config.inventory end
     if GetResourceState('ox_inventory') == 'started' then return 'ox_inventory' end
     if GetResourceState('qb-inventory') == 'started' then return 'qb-inventory' end
+    -- Plain ESX with its built-in inventory (no item metadata - see PPBridge.supportsMetadata).
+    if detectFrameworkName() == 'esx' then return 'esx' end
     return 'ox_inventory'
 end
 
@@ -132,15 +140,51 @@ function PPBridge.addMoney(source, account, amount)
     return true
 end
 
+-- ox_inventory and qb-inventory can store data on an item (what is inside a parcel, etc.); plain ESX can't, so there
+-- the sealed-parcel box is skipped and the items are handed over directly.
+function PPBridge.supportsMetadata()
+    return inventory == 'ox_inventory' or inventory == 'qb-inventory'
+end
+
+function PPBridge.inventoryName() return inventory end
+function PPBridge.frameworkName() return framework end
+
 function PPBridge.getItemCount(source, item)
     if inventory == 'ox_inventory' then
         local ok, count = pcall(function() return exports.ox_inventory:Search(source, 'count', item) end)
         return ok and (count or 0) or 0
     elseif inventory == 'qb-inventory' then
-        local ok, it = pcall(function() return exports['qb-inventory']:GetItemByName(source, item) end)
-        return ok and it and (it.amount or it.count or 0) or 0
+        -- Newer qb-inventory counts across every stack; older builds only have GetItemByName (first stack).
+        local ok, count = pcall(function() return exports['qb-inventory']:GetItemCount(source, item) end)
+        if ok and type(count) == 'number' then return count end
+        local ok2, it = pcall(function() return exports['qb-inventory']:GetItemByName(source, item) end)
+        return ok2 and it and (it.amount or it.count or 0) or 0
+    elseif inventory == 'esx' then
+        ensureCore()
+        local xPlayer = ESX and ESX.GetPlayerFromId(source)
+        local ok, it = pcall(function() return xPlayer and xPlayer.getInventoryItem(item) end)
+        return ok and it and (it.count or 0) or 0
     end
     return 0
+end
+
+-- Can the player's inventory take this? Asked BEFORE handing anything over so a full inventory never eats an order.
+-- Unknown inventories say yes (the add call itself is still checked).
+function PPBridge.canCarry(source, item, count)
+    count = count or 1
+    if inventory == 'ox_inventory' then
+        local ok, can = pcall(function() return exports.ox_inventory:CanCarryItem(source, item, count) end)
+        return not ok or can ~= false
+    elseif inventory == 'qb-inventory' then
+        local ok, can = pcall(function() return exports['qb-inventory']:CanAddItem(source, item, count) end)
+        return not ok or can ~= false
+    elseif inventory == 'esx' then
+        ensureCore()
+        local xPlayer = ESX and ESX.GetPlayerFromId(source)
+        local ok, can = pcall(function() return xPlayer and xPlayer.canCarryItem(item, count) end)
+        return not ok or can ~= false
+    end
+    return true
 end
 
 function PPBridge.addItem(source, item, count, metadata)
@@ -149,7 +193,13 @@ function PPBridge.addItem(source, item, count, metadata)
         local ok, result = pcall(function() return exports.ox_inventory:AddItem(source, item, count, metadata) end)
         return ok and result and true or false
     elseif inventory == 'qb-inventory' then
-        local ok = pcall(function() exports['qb-inventory']:AddItem(source, item, count, false, metadata) end)
+        local ok, result = pcall(function() return exports['qb-inventory']:AddItem(source, item, count, false, metadata) end)
+        return ok and result ~= false
+    elseif inventory == 'esx' then
+        ensureCore()
+        local xPlayer = ESX and ESX.GetPlayerFromId(source)
+        if not xPlayer then return false end
+        local ok = pcall(function() xPlayer.addInventoryItem(item, count) end)
         return ok
     end
     return false
@@ -161,7 +211,13 @@ function PPBridge.removeItem(source, item, count)
         local ok, result = pcall(function() return exports.ox_inventory:RemoveItem(source, item, count) end)
         return ok and result and true or false
     elseif inventory == 'qb-inventory' then
-        local ok = pcall(function() exports['qb-inventory']:RemoveItem(source, item, count) end)
+        local ok, result = pcall(function() return exports['qb-inventory']:RemoveItem(source, item, count) end)
+        return ok and result ~= false
+    elseif inventory == 'esx' then
+        ensureCore()
+        local xPlayer = ESX and ESX.GetPlayerFromId(source)
+        if not xPlayer then return false end
+        local ok = pcall(function() xPlayer.removeInventoryItem(item, count) end)
         return ok
     end
     return false
@@ -194,6 +250,13 @@ function PPBridge.registerUsable(itemName, handler)
     end
 
     ensureCore()
+    if inventory == 'esx' and ESX then
+        ESX.RegisterUsableItem(itemName, function(source)
+            local function removeSelf() PPBridge.removeItem(source, itemName, 1) end
+            handler(source, {}, removeSelf)
+        end)
+        return
+    end
     local function qbHandler(source, item)
         local function removeSelf()
             pcall(function() exports['qb-inventory']:RemoveItem(source, itemName, 1, item and item.slot) end)

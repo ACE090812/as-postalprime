@@ -65,7 +65,9 @@ local function buildLines(rawItems, buyerCid, checkStock)
             end
 
             local price = PP.unitPrice(entry)
-            local line = { id = entry.id, label = entry.label, icon = entry.icon, price = price, qty = qty }
+            -- `item` is saved on the line so a later config change (or a removed catalog entry) can't break the hand-over.
+            local line = { id = entry.id, label = entry.label, icon = entry.icon, price = price, qty = qty, item = entry.item }
+            if not entry.listing and price < entry.price then line.origPrice = entry.price end
             if entry.listing then
                 -- Marketplace line: remembers what to hand over and who gets paid when it is collected.
                 line.item = entry.item
@@ -167,9 +169,33 @@ lib.callback.register('as-postalprime:checkout', function(source, data)
 
     -- One delivery charge: home delivery uses its own fee INSTEAD of the normal locker delivery fee.
     local deliveryFee = plusActive and 0 or (isHome and (Config.home.fee or 0) or (Config.plus.deliveryFee or 0))
-    local total = round2(itemsTotal - discount + deliveryFee)
     local prepSeconds = plusActive and (Config.plus.prepSeconds or Config.order.prepSeconds) or (Config.order.prepSeconds or 180)
+
+    -- Express shipping: a fee for a (much) shorter prep time.
+    local expressFee, express = 0, false
+    local ex = Config.shipping and Config.shipping.express
+    if data.speed == 'express' and ex and ex.enabled ~= false then
+        express = true
+        expressFee = plusActive and (ex.plusFee or ex.fee or 0) or (ex.fee or 0)
+        prepSeconds = math.min(prepSeconds, ex.prepSeconds or prepSeconds)
+    end
     if isHome then prepSeconds = prepSeconds + homeTravelSeconds(property.coords) end
+
+    -- Delivery insurance (home delivery only): refunds the items if someone else takes the parcel from the doorstep.
+    local insuranceFee, insured = 0, false
+    local ins = Config.insurance
+    if isHome and data.insured == true and ins and ins.enabled ~= false then
+        insured = true
+        insuranceFee = round2(math.max(ins.minFee or 0, math.min(ins.maxFee or 1e9, itemsTotal * (ins.pct or 5) / 100)))
+    end
+
+    -- Loyalty points as money off the items.
+    local pointsUsed, pointsDiscount = 0, 0
+    if data.points == true then
+        pointsUsed, pointsDiscount = PPLoyalty.quote(buyerPd, round2(itemsTotal - discount))
+    end
+
+    local total = round2(itemsTotal - discount - pointsDiscount + deliveryFee + expressFee + insuranceFee)
 
     if not chargePlayer(source, total) then
         return { ok = false, error = T('err.noCash') }
@@ -189,6 +215,12 @@ lib.callback.register('as-postalprime:checkout', function(source, data)
     end
 
     if couponCode then PPDeals.spendCoupon(buyerPd, couponCode) end
+    if pointsUsed > 0 then PPLoyalty.add(buyerPd, -pointsUsed) end
+
+    local dealSavings = 0
+    for _, it in ipairs(items) do
+        if it.origPrice then dealSavings = dealSavings + (it.origPrice - it.price) * it.qty end
+    end
 
     local now = os.time()
     local order = {
@@ -203,6 +235,13 @@ lib.callback.register('as-postalprime:checkout', function(source, data)
         coupon = couponCode,
         couponBy = couponCode and cid or nil,
         deliveryFee = deliveryFee,
+        speed = express and 'express' or nil,
+        expressFee = expressFee > 0 and expressFee or nil,
+        insured = insured or nil,
+        insuranceFee = insured and insuranceFee or nil,
+        pointsUsed = pointsUsed > 0 and pointsUsed or nil,
+        pointsDiscount = pointsDiscount > 0 and pointsDiscount or nil,
+        dealSavings = dealSavings > 0 and round2(dealSavings) or nil,
         total = total,
         buyerCid = cid,
         placedAt = now,
@@ -219,6 +258,7 @@ lib.callback.register('as-postalprime:checkout', function(source, data)
     PPStore.savePlayer(recipientCid)
     if cid ~= recipientCid then PPStore.savePlayer(cid) end
 
+    TriggerEvent('as-postalprime:orderPlaced', cid, order.id, total)
     PPLog.log('purchase', source, ('%d line(s), $%s%s%s'):format(#items, total,
         couponCode and (' with ' .. couponCode) or '', giftCid and (' (gift to ' .. giftName .. ')') or ''),
         { order = order.id, total = total, delivery = order.delivery })
@@ -247,7 +287,13 @@ function PP.unwindOrder(order, reason)
         PPDeals.refundCoupon(PPStore.getPlayer(order.couponBy), order.coupon)
         PPStore.markDirty(order.couponBy)
     end
+    if order.pointsUsed and order.buyerCid then
+        PPLoyalty.add(PPStore.getPlayer(order.buyerCid), order.pointsUsed)
+        PPStore.markDirty(order.buyerCid)
+    end
     PP.refundCid(order.buyerCid or order.ownerCid, order.total)
+    PPStats.bump(reason == 'expired' and 'expired' or 'cancelled', 1)
+    PPStats.bump('refunded', order.total)
     PPLog.log('cancel', nil,
         ('order %s %s, $%s refunded'):format(order.id, reason, order.total), { order = order.id, reason = reason })
 end
@@ -326,6 +372,10 @@ lib.callback.register('as-postalprime:returnItem', function(source, data)
     refundPlayer(source, refund)
     if Config.returns.restock ~= false then PP.giveStock(line.id, qty) end
 
+    PPStats.recordReturn(cid, refund)
+    PPStats.bump('returns', 1)
+    PPStats.bump('refunded', refund)
+    if order.buyerCid then PPLoyalty.clawback(order.buyerCid, refund) end
     PPLog.log('return', source, ('returned %dx %s for $%s'):format(qty, line.label, refund), { order = order.id })
     TriggerClientEvent('as-postalprime:toast', source, {
         title = T('app.name'), description = T('toast.returned', refund), type = 'success',
@@ -349,6 +399,8 @@ lib.callback.register('as-postalprime:subscribePlus', function(source)
     local base = (pd.plus and pd.plus.expiresAt and pd.plus.expiresAt > now) and pd.plus.expiresAt or now
     pd.plus = { expiresAt = base + durationSeconds }
     PPStore.savePlayer(cid)
+    PPStats.bump('plusSales', 1)
+    PPStats.bump('plusRevenue', price)
     PPLog.log('purchase', source, ('Postal Prime Plus for $%s'):format(price), { plus = true })
 
     return {
@@ -356,3 +408,20 @@ lib.callback.register('as-postalprime:subscribePlus', function(source)
         plus = { active = true, expiresAt = pd.plus.expiresAt * 1000 },
     }
 end)
+
+-- Everything that happens when any order is collected (locker or doorstep): sellers are paid, the buyer earns loyalty
+-- points, the collector's stats and the server's daily counters are updated.
+function PP.onCollected(cid, order)
+    if order.parcel then return end
+    PPMarket.payout(order)
+    PPLoyalty.earn(order)
+    PPStats.recordCollected(cid, order)
+    PPStats.bump('orders', 1)
+    PPStats.bump('revenue', order.total or 0)
+    if (order.discount or 0) > 0 then PPStats.bump('couponDiscount', order.discount) end
+    if (order.pointsDiscount or 0) > 0 then PPStats.bump('pointsDiscount', order.pointsDiscount) end
+    if (order.expressFee or 0) > 0 then PPStats.bump('expressFees', order.expressFee) end
+    if (order.insuranceFee or 0) > 0 then PPStats.bump('insuranceFees', order.insuranceFee) end
+    PPStats.bumpItems(order)
+    TriggerEvent('as-postalprime:orderCollected', cid, order.id, order.total or 0)
+end

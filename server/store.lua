@@ -10,6 +10,8 @@ PPStore.reviews = {}   -- [itemId] = { [identifier] = { rating, title, body, nam
 PPStore.stock = {}     -- [itemId] = remaining count - only present for items with a configured stock cap
 PPStore.listings = {}  -- [id (number)] = marketplace listing (see server/market.lua)
 PPStore.couponUses = {} -- [CODE] = how many times the coupon has been used server-wide
+PPStore.rentals = {}   -- [id (number)] = locker rental (see server/rentals.lua)
+PPStore.daily = {}     -- ['YYYY-MM-DD'] = { revenue = n, orders = n, ... } sales counters (see server/stats.lua)
 PPStore.ready = false
 
 -- Wraps oxmysql's callback API in an explicit promise/await so this genuinely blocks the calling
@@ -59,6 +61,19 @@ local function ensureTables()
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
     ]])
     query([[
+        CREATE TABLE IF NOT EXISTS postalprime_rentals (
+            id INT NOT NULL PRIMARY KEY,
+            data LONGTEXT NOT NULL,
+            updated_at INT UNSIGNED NOT NULL
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    ]])
+    query([[
+        CREATE TABLE IF NOT EXISTS postalprime_daily (
+            day VARCHAR(10) NOT NULL PRIMARY KEY,
+            data LONGTEXT NOT NULL
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
+    ]])
+    query([[
         CREATE TABLE IF NOT EXISTS postalprime_coupons (
             code VARCHAR(64) NOT NULL PRIMARY KEY,
             uses INT NOT NULL
@@ -72,6 +87,8 @@ local function ensureTables()
     pcall(query, 'ALTER TABLE postalprime_reviews CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci')
     pcall(query, 'ALTER TABLE postalprime_stock CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci')
     pcall(query, 'ALTER TABLE postalprime_listings CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci')
+    pcall(query, 'ALTER TABLE postalprime_rentals CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci')
+    pcall(query, 'ALTER TABLE postalprime_daily CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci')
     pcall(query, 'ALTER TABLE postalprime_coupons CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci')
 end
 
@@ -111,6 +128,22 @@ local function loadAll()
             decoded.id = tonumber(row.id)
             PPStore.listings[decoded.id] = decoded
         end
+    end
+
+    local rentalRows = query('SELECT id, data FROM postalprime_rentals', {})
+    for _, row in ipairs(rentalRows or {}) do
+        local ok, decoded = pcall(json.decode, row.data)
+        if ok and type(decoded) == 'table' then
+            decoded.id = tonumber(row.id)
+            PPStore.rentals[decoded.id] = decoded
+        end
+    end
+
+    -- Only the last 120 days of sales counters are kept in memory (older rows stay in the table).
+    local dailyRows = query("SELECT day, data FROM postalprime_daily WHERE day >= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 120 DAY), '%Y-%m-%d')", {})
+    for _, row in ipairs(dailyRows or {}) do
+        local ok, decoded = pcall(json.decode, row.data)
+        if ok and type(decoded) == 'table' then PPStore.daily[row.day] = decoded end
     end
 
     local couponRows = query('SELECT code, uses FROM postalprime_coupons', {})
@@ -244,6 +277,35 @@ function PPStore.saveListing(id)
     )
 end
 
+function PPStore.saveRental(id)
+    local r = PPStore.rentals[id]
+    if not r then return end
+    query(
+        'INSERT INTO postalprime_rentals (id, data, updated_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = VALUES(updated_at)',
+        { id, json.encode(r), os.time() }
+    )
+end
+
+function PPStore.deleteRental(id)
+    PPStore.rentals[id] = nil
+    query('DELETE FROM postalprime_rentals WHERE id = ?', { id })
+end
+
+function PPStore.nextRentalId()
+    local max = 0
+    for id in pairs(PPStore.rentals) do if id > max then max = id end end
+    return max + 1
+end
+
+function PPStore.saveDaily(day)
+    local d = PPStore.daily[day]
+    if not d then return end
+    query(
+        'INSERT INTO postalprime_daily (day, data) VALUES (?, ?) ON DUPLICATE KEY UPDATE data = VALUES(data)',
+        { day, json.encode(d) }
+    )
+end
+
 function PPStore.deleteListing(id)
     PPStore.listings[id] = nil
     query('DELETE FROM postalprime_listings WHERE id = ?', { id })
@@ -292,6 +354,8 @@ AddEventHandler('onResourceStop', function(name)
     PPStore.savePlayers()
     PPStore.saveReviews()
     for id in pairs(PPStore.listings) do PPStore.saveListing(id) end
+    for id in pairs(PPStore.rentals) do PPStore.saveRental(id) end
+    for day in pairs(PPStore.daily) do PPStore.saveDaily(day) end
 end)
 
 return PPStore

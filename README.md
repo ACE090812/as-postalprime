@@ -210,6 +210,8 @@ Everything persists to your database, not a JSON file - created automatically on
 - **`postalprime_stock`** - remaining stock for items with a `stock` cap.
 - **`postalprime_listings`** - marketplace listings (see "Marketplace").
 - **`postalprime_coupons`** - how many times each coupon code has been used server-wide.
+- **`postalprime_rentals`** - locker rentals.
+- **`postalprime_daily`** - per-day sales counters for `ppadmin stats`.
 
 Saves are targeted: a player row is only written when its contents actually changed, money-related
 changes (checkout, refunds, collecting, returns) are written immediately, and minor ones (cart,
@@ -429,6 +431,11 @@ Give your admins the ACE `add_ace group.admin command.ppadmin allow`, then (in g
 | `ppadmin restock <itemId> <amount>` | add stock (`pprestock` from the console still works) |
 | `ppadmin coupon <CODE> [reset]` | show or reset a coupon's server-wide use count |
 | `ppadmin market [remove <id>]` | list marketplace listings / remove one |
+| `ppadmin loyalty <id\|citizenid> [points]` | show, or add (negative removes) loyalty points |
+| `ppadmin rentals [end <id>]` | list locker rentals / end one |
+| `ppadmin subs <id\|citizenid>` | list a player's subscriptions |
+| `ppadmin stats [days]` | sales dashboard |
+| `ppadmin repair [apply]` | scan for stuck orders etc. (add `apply` to fix them) |
 
 ## Config check and locales
 
@@ -440,6 +447,92 @@ coupon/deal settings that can't work, marketplace config, and any locale file th
 
 Outside the server, `lua tools/check-locales.lua` (from the resource folder) compares every `locales/*.lua` with
 `locales/en.lua` and lists missing / extra / mismatched keys. Missing keys fall back to English at runtime.
+
+## Shipping speed and delivery insurance
+
+- **Express shipping** (`Config.shipping.express`): at checkout the player can pay `fee` (Plus members `plusFee`)
+  to skip the queue; the order is ready after `prepSeconds` instead of the normal / Plus prep time.
+- **Delivery insurance** (`Config.insurance`), home delivery only: an optional fee of `pct` % of the items total
+  (between `minFee` and `maxFee`). If an insured doorstep parcel is taken by *someone else*, the owner is refunded what they
+  paid for the items automatically and gets a phone notification. (Doorstep parcels can be taken by anyone by design -
+  this is the safety net.)
+
+## Loyalty points
+
+`Config.loyalty`: collecting an order earns `pointsPerDollar` x what was paid for the items x the buyer's tier
+multiplier (Bronze / Silver / Gold / Platinum by default; the tier comes from points earned over the lifetime, spending
+points never lowers it). At checkout a switch redeems points as money off the items (`redeem.pointsPerDollar` points = $1,
+up to `maxPct` of the items total). Cancelling an order gives the points back; returning items takes back the points
+they earned. Orders taken by someone else earn nothing.
+
+## Subscribe & save
+
+On a product page, **Subscribe & save** orders the item again every day / week / 2 weeks (`Config.subscriptions.intervals`)
+to a locker of your choice, at `discountPct` off (`plusDiscountPct` for Plus members). It is charged when due while the
+player is online (a missed one waits for them) and is placed as an ordinary shop order, so it appears in Orders, has a
+pickup code and counts towards `Config.order.maxActive`. If the player can't pay it retries every `retryMinutes` and
+pauses after `maxFailures`. Manage them (pause / resume / cancel) in the You tab.
+
+## Locker rentals
+
+`Config.rentals`: rent a private storage door at any locker for `pricePerDay`. The renter sees a 6-digit code in the You
+tab (they can share it or change it); typing it into **that locker's keypad** opens an ox_inventory stash (opened server-side,
+and the stash ids are random, so other players can't open it by guessing). Because anyone holding a code can open a rental, every
+wrong attempt at a locker that has rentals counts towards the keypad lockout. When a rental runs out the code stops
+working; for `graceHours` the owner can still extend it, after that the rental ends (`clearOnExpire = true` also wipes what
+was left inside; the default keeps the stash untouched but unreachable). **Needs ox_inventory.**
+
+## Spending stats
+
+The You tab shows lifetime totals: orders collected, money spent, money saved (deals, coupons, points), the last 6 months,
+spending by category and most-bought items. Totals are kept on the player's record, so they are not limited to the few orders
+the history keeps. (Orders are counted for whoever collected them.)
+
+## Storefronts
+
+Sellers can give their marketplace listings a **shop name, tagline and icon** (You tab). The Marketplace category shows a
+card per shop to filter by seller. Clients only ever see an opaque seller key, never a citizen id.
+
+## Offline notifications
+
+A phone notification for a player who is offline (order ready, expired, marketplace sale, points earned, rental ending...)
+is queued on their record (max 8, dropped after 48 hours) and delivered when they are next around.
+
+## Inventory support
+
+ox_inventory, qb-inventory and plain ESX (built-in inventory) are supported. ESX has no item metadata, so there the
+sealed-parcel box is skipped and orders are handed over as plain items (the config check tells you so). Whatever the
+inventory, a **full inventory never eats an order**: the hand-over is checked first, the player is told to make room, and the
+door / box stays so they can try again (an unopened parcel box stays in their inventory).
+
+## Sales dashboard and repair
+
+- `ppadmin stats [days]` prints orders, revenue, average order, cancelled / expired / returns / damaged, refunds, coupon and
+  points discounts, express and insurance fees and payouts, Plus and rental sales, marketplace volume and commission, and the
+  top items. The counters are kept per day in `postalprime_daily`.
+- `ppadmin repair` reports orders that are stuck or inconsistent - finished orders still listed as in flight, two ready
+  orders sharing a locker door, a missing pickup code, a courier who vanished, negative stock or listings, expired rentals,
+  subscriptions pointing at removed items - and `ppadmin repair apply` fixes what it can.
+- `ppadmin loyalty`, `ppadmin rentals` and `ppadmin subs` look after the new features (see the admin table).
+
+## Exports for other resources
+
+Besides `createParcel` / `getParcels` / `getDeliveryInfo` / `getLockers` (see "Parcels from other resources"), these server
+exports are available (all trusted, server-side only):
+
+| Export | What it does |
+| --- | --- |
+| `addCatalogItem(entry)` | add a product at runtime (not saved - call it each time your resource starts) |
+| `removeCatalogItem(id)` | take a product off sale (orders already placed still get their items) |
+| `addCoupon(code, def)` / `removeCoupon(code)` | runtime coupon codes |
+| `giftItems(cid, { itemId = qty }, { lockerId, sender, ref })` | put catalog items in someone's locker as a free parcel |
+| `getOrders(cid)` | the character's in-flight orders |
+| `getStock(itemId)` / `setStock(itemId, n)` | read / set stock |
+| `addLoyaltyPoints(cid, points)` / `getLoyalty(cid)` | loyalty points |
+| `grantPlus(cid, days)` | grant Postal Prime Plus |
+
+Server events: `as-postalprime:orderPlaced (cid, orderId, total)`, `as-postalprime:orderCollected (cid, orderId, total)`,
+plus the existing parcel events and `as-postalprime:suspiciousCollect`.
 
 ## Not included
 

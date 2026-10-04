@@ -32,10 +32,10 @@ local function expireOrder(cid, pd, order)
     -- Stock, coupon use and money all go back. An offline buyer is paid the next time they are online.
     order.ownerCid = cid
     PP.unwindOrder(order, 'expired')
+    PP.notifyCid(cid, T('notif.expired.title'), T('notif.expired.body', order.lockerLabel))
     if src then
         TriggerClientEvent('as-postalprime:client:updated', src)
         if not hasReadyLockerOrder(pd) then TriggerClientEvent('as-postalprime:client:orderReady:clear', src) end
-        pushPhoneNotification(src, T('notif.expired.title'), T('notif.expired.body', order.lockerLabel))
     end
 end
 
@@ -83,7 +83,11 @@ CreateThread(function()
             end
 
             -- A refund that became due while the player was offline is paid as soon as they are back.
-            if pd.pendingRefund and onlineSources[cid] then PP.applyPendingRefund(onlineSources[cid], cid) end
+            if onlineSources[cid] then
+                if pd.pendingRefund then PP.applyPendingRefund(onlineSources[cid], cid) end
+                if pd.pendingNotifs then PP.deliverPendingNotifs(onlineSources[cid], cid) end
+                if pd.subs and #pd.subs > 0 then PPSubs.process(cid, pd, onlineSources[cid], now) end
+            end
 
             -- Plus expiring-soon heads-up: fires once per membership period, within 24h of
             -- expiry. pd.plus is a brand-new table on every subscribe/renew (see subscribePlus),

@@ -35,6 +35,18 @@ local function listingId(key)
     return n and tonumber(n) or nil
 end
 
+-- A stable, opaque id for a seller that is safe to send to clients (never the citizen id).
+local function sellerKey(cid)
+    local h = 5381
+    for i = 1, #cid do h = (h * 33 + cid:byte(i)) % 4294967296 end
+    return ('s%08x'):format(h)
+end
+
+local function shopOf(cid)
+    local pd = PPStore.players[cid]
+    return pd and pd.market and pd.market.shop or nil
+end
+
 -- A listing in the shape of a catalog entry, so the rest of the server can treat both the same way.
 local function asEntry(l)
     return {
@@ -80,9 +92,11 @@ function PPMarket.catalogRows()
     table.sort(ids)
     for _, id in ipairs(ids) do
         local l = PPStore.listings[id]
+        local shop = shopOf(l.seller)
         out[#out + 1] = {
             id = 'mp:' .. id, label = l.label, price = l.price, icon = l.icon, cat = 'market',
-            rating = 0, reviews = 0, stock = l.qty, seller = l.sellerName,
+            rating = 0, reviews = 0, stock = l.qty, seller = (shop and shop.name) or l.sellerName,
+            sellerKey = sellerKey(l.seller),
         }
     end
     return out
@@ -119,7 +133,29 @@ function PPMarket.stateFor(source, cid, pd)
         balance = md.balance or 0,
         earned = md.earned or 0,
         sold = md.sold or 0,
+        shop = md.shop or { name = '', tagline = '', icon = '🏪' },
     }
+end
+
+-- Storefront cards for the Marketplace page: one per seller that has something in stock.
+function PPMarket.shops()
+    local by, order = {}, {}
+    for _, l in pairs(PPStore.listings) do
+        if l.qty > 0 then
+            local key = sellerKey(l.seller)
+            if not by[key] then
+                local shop = shopOf(l.seller)
+                by[key] = { key = key, name = (shop and shop.name ~= '' and shop.name) or l.sellerName, tagline = shop and shop.tagline or '',
+                            icon = (shop and shop.icon) or '🏪', items = 0 }
+                order[#order + 1] = key
+            end
+            by[key].items = by[key].items + 1
+        end
+    end
+    table.sort(order, function(a, b) return by[a].name < by[b].name end)
+    local out = {}
+    for _, k in ipairs(order) do out[#out + 1] = by[k] end
+    return out
 end
 
 -- Units of a listing still tied up in uncollected orders (they can come back if the order is cancelled or expires).
@@ -188,6 +224,30 @@ lib.callback.register('as-postalprime:market:remove', function(source, data)
     return { ok = true, market = PPMarket.stateFor(source, cid, PPStore.getPlayer(cid)) }
 end)
 
+-- A seller's storefront: a shop name, tagline and icon shown on their listings and on the Marketplace page.
+lib.callback.register('as-postalprime:market:setShop', function(source, data)
+    local cid = track(source)
+    if not cid or type(data) ~= 'table' then return { ok = false, error = T('err.unavailable') } end
+    if not PPMarket.enabled() then return { ok = false, error = T('err.market.off') } end
+    if not canSell(source) then return { ok = false, error = T('err.market.job') } end
+    -- Trim, drop control characters / angle brackets, and cut to n CHARACTERS (not bytes, so an emoji is never split).
+    local clean = function(v, n)
+        local str = tostring(v or ''):gsub('[%c<>]', ''):gsub('^%s+', ''):gsub('%s+$', '')
+        if not utf8.len(str) then return '' end
+        local cut = utf8.offset(str, n + 1)
+        return cut and str:sub(1, cut - 1) or str
+    end
+    local pd = PPStore.getPlayer(cid)
+    local md = sellerData(pd)
+    md.shop = {
+        name = clean(data.name, 30), tagline = clean(data.tagline, 60),
+        icon = (clean(data.icon, 2) ~= '' and clean(data.icon, 2)) or '🏪',
+    }
+    PPStore.savePlayer(cid)
+    PPLog.log('listing', source, ('set storefront "%s"'):format(md.shop.name), { citizen = cid })
+    return { ok = true, market = PPMarket.stateFor(source, cid, pd) }
+end)
+
 lib.callback.register('as-postalprime:market:withdraw', function(source)
     local cid = track(source)
     if not cid then return { ok = false, error = T('err.unavailable') } end
@@ -205,9 +265,8 @@ lib.callback.register('as-postalprime:market:withdraw', function(source)
     return { ok = true, market = PPMarket.stateFor(source, cid, pd) }
 end)
 
--- Called whenever any order is collected (locker, doorstep). Pays the sellers behind any marketplace lines.
-function PP.onCollected(cid, order)
-    if order.parcel then return end
+-- Pays the sellers behind any marketplace lines of a collected order (called from PP.onCollected in shop.lua).
+function PPMarket.payout(order)
     local credited = {}
     for _, it in ipairs(order.items) do
         if it.listingId and it.sellerCid then
@@ -219,17 +278,17 @@ function PP.onCollected(cid, order)
             md.earned = round2((md.earned or 0) + net)
             md.sold = (md.sold or 0) + (it.qty or 0)
             credited[it.sellerCid] = (credited[it.sellerCid] or 0) + net
+            PPStats.bump('marketGross', gross)
+            PPStats.bump('marketCommission', round2(gross - net))
             PPLog.log('sale', nil, ('%dx %s sold by %s for $%s ($%s after commission)'):format(it.qty, it.label, it.sellerName or '?', gross, net),
                 { order = order.id, seller = it.sellerCid })
         end
     end
     for sellerCid, net in pairs(credited) do
         PPStore.savePlayer(sellerCid)
+        PP.notifyCid(sellerCid, T('notif.sale.title'), T('notif.sale.body', round2(net)))
         local src = PP.source(sellerCid)
-        if src then
-            PP.notify(src, T('notif.sale.title'), T('notif.sale.body', round2(net)))
-            TriggerClientEvent('as-postalprime:client:updated', src)
-        end
+        if src then TriggerClientEvent('as-postalprime:client:updated', src) end
     end
 end
 

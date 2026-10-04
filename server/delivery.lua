@@ -69,12 +69,12 @@ function PP.dropHome(cid, order, byName)
     if byName then payload.noAnim = true end
     TriggerClientEvent('as-postalprime:client:homeDrop', -1, payload)
 
+    PP.notifyOrderCid(cid, order, T('notif.arrived.title'),
+        byName and T('notif.arrived.byCourier', byName, order.homeProperty.label)
+            or T('notif.arrived.byVan', order.homeProperty.label))
     local src = onlineSources[cid]
     if src then
         TriggerClientEvent('as-postalprime:client:updated', src)
-        PP.notifyOrder(src, order, T('notif.arrived.title'),
-            byName and T('notif.arrived.byCourier', byName, order.homeProperty.label)
-                or T('notif.arrived.byVan', order.homeProperty.label))
         if not order.business then
             TriggerClientEvent('as-postalprime:client:orderReady', src, order.homeProperty.coords, order.homeProperty.label)
         end
@@ -156,12 +156,12 @@ function PP.readyLocker(cid, order, byName)
     if hadCourier then order.expiresAt = os.time() + (order.expireSeconds or Config.order.expireSecondsAfterReady or 1800) end
     if byName or hadCourier then PPStore.savePlayer(cid) else PPStore.markDirty(cid) end
 
+    PP.notifyOrderCid(cid, order, T('notif.ready.title'),
+        byName and T('notif.ready.byCourier', byName, order.lockerLabel)
+            or T('notif.ready.default', order.lockerLabel))
     local src = onlineSources[cid]
     if src then
         TriggerClientEvent('as-postalprime:client:updated', src)
-        PP.notifyOrder(src, order, T('notif.ready.title'),
-            byName and T('notif.ready.byCourier', byName, order.lockerLabel)
-                or T('notif.ready.default', order.lockerLabel))
         local locker = findLocker(order.lockerId)
         if locker then
             TriggerClientEvent('as-postalprime:client:orderReady', src,
@@ -203,6 +203,10 @@ AddEventHandler('as-postalprime:takeHomeParcel', function(orderId)
 
     for _, it in ipairs(order.items) do
         local entry = findCatalogItem(it.id)
+        if not PPBridge.canCarry(source, entry and entry.item or it.item or it.id, it.qty) then return PP.cantCarry(source) end
+    end
+    for _, it in ipairs(order.items) do
+        local entry = findCatalogItem(it.id)
         PPBridge.addItem(source, entry and entry.item or it.item or it.id, it.qty, it.metadata)
     end
 
@@ -212,7 +216,21 @@ AddEventHandler('as-postalprime:takeHomeParcel', function(orderId)
     removeOrder(ownerPd, order)
     pushHistory(ownerPd, order)
     PPStore.savePlayer(ownerCid)
-    if takerCid == ownerCid then PP.rollDamaged(source, order) end
+    if takerCid == ownerCid then
+        PP.rollDamaged(source, order)
+    elseif order.insured and not order.parcel then
+        -- Insured parcel taken by somebody else: the owner gets what they paid for the items back.
+        local refund = PP.itemsPaid(order)
+        if refund > 0 then
+            order.insurancePaid = refund
+            PP.refundCid(ownerCid, refund)
+            PPStats.bump('insurancePayouts', refund)
+            PPStats.bump('refunded', refund)
+            PPLog.log('insurance', source, ('insured parcel %s was taken by someone else, $%s refunded to the owner'):format(order.id, refund), { order = order.id })
+            PP.notifyCid(ownerCid, T('notif.insured.title'), T('notif.insured.body', refund))
+            PPStore.savePlayer(ownerCid)
+        end
+    end
     PP.onCollected(ownerCid, order)
 
     if order.parcel then TriggerEvent('as-postalprime:parcelCollected', ownerCid, order.parcelRef, source) end

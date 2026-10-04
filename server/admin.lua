@@ -42,7 +42,12 @@ ppadmin stock <itemId> [amount]          show or SET stock for an item
 ppadmin restock <itemId> <amount>        add stock
 ppadmin coupon <CODE> [reset]            show (or reset) a coupon's server-wide uses
 ppadmin market                           list marketplace listings
-ppadmin market remove <listingId>        remove a listing (seller must be online to get the items back)]]
+ppadmin market remove <listingId>        remove a listing (seller must be online to get the items back)
+ppadmin loyalty <id|citizenid> [points]  show, or add (negative removes) loyalty points
+ppadmin rentals [end <id>]               list locker rentals / end one
+ppadmin subs <id|citizenid>              list a player's subscriptions
+ppadmin stats [days]                     sales dashboard (default 7 days; 1 = today)
+ppadmin repair [apply]                   scan for stuck orders etc. (add 'apply' to fix them)]]
 
 local commands = {}
 
@@ -154,6 +159,79 @@ commands.market = function(src, args)
     end
     table.sort(lines)
     say(src, #lines == 0 and 'No listings.' or table.concat(lines, '\n'))
+end
+
+commands.loyalty = function(src, args)
+    local cid = resolveCid(args[2])
+    if not cid then return say(src, 'Usage: ppadmin loyalty <id|citizenid> [points]') end
+    local pd = PPStore.getPlayer(cid)
+    local delta = tonumber(args[3])
+    if delta then
+        PPLoyalty.add(pd, math.floor(delta))
+        PPStore.savePlayer(cid)
+        PPLog.log('admin', src, ('adjusted loyalty points of %s by %d'):format(cid, math.floor(delta)), { citizen = cid })
+    end
+    local st = PPLoyalty.stateFor(pd)
+    say(src, ('%s: %d points (%d lifetime), tier %s'):format(cid, st.points or 0, st.lifetime or 0, st.tier or '-'))
+end
+
+commands.rentals = function(src, args)
+    if args[2] == 'end' then
+        local r = PPStore.rentals[tonumber(args[3]) or -1]
+        if not r then return say(src, 'No such rental.') end
+        PPRentals.finish(r, 'ended by admin')
+        PPLog.log('admin', src, ('ended rental #%d'):format(r.id), { rental = r.id })
+        return say(src, ('Ended rental #%d.'):format(r.id))
+    end
+    local lines = {}
+    for id, r in pairs(PPStore.rentals) do
+        lines[#lines + 1] = ('#%d  %s  %s  code %s  %s'):format(id, r.lockerId, r.ownerName or r.owner, r.code,
+            r.expiresAt > os.time() and ('ends in ' .. math.ceil((r.expiresAt - os.time()) / 3600) .. 'h') or 'EXPIRED (grace)')
+    end
+    table.sort(lines)
+    say(src, #lines == 0 and 'No rentals.' or table.concat(lines, '\n'))
+end
+
+commands.subs = function(src, args)
+    local cid = resolveCid(args[2])
+    if not cid then return say(src, 'Usage: ppadmin subs <id|citizenid>') end
+    local lines = {}
+    for _, s in ipairs(PPStore.getPlayer(cid).subs or {}) do
+        lines[#lines + 1] = ('%dx %s %s  next %s%s'):format(s.qty, s.itemId, s.interval, os.date('%Y-%m-%d %H:%M', s.nextAt), s.paused and '  PAUSED' or '')
+    end
+    say(src, #lines == 0 and 'No subscriptions.' or table.concat(lines, '\n'))
+end
+
+commands.stats = function(src, args)
+    local days = math.max(1, math.floor(tonumber(args[2]) or 7))
+    local s, top = PPStats.summary(days)
+    local function n(k) return s[k] or 0 end
+    local orders = n('orders')
+    local lines = {
+        ('Last %d day(s)'):format(days),
+        ('Orders collected: %d   Revenue: $%s   Average: $%s'):format(orders, round2(n('revenue')), orders > 0 and round2(n('revenue') / orders) or 0),
+        ('Cancelled: %d   Expired: %d   Returns: %d   Damaged: %d   Refunded: $%s'):format(n('cancelled'), n('expired'), n('returns'), n('damaged'), round2(n('refunded'))),
+        ('Coupon discounts: $%s   Points discounts: $%s'):format(round2(n('couponDiscount')), round2(n('pointsDiscount'))),
+        ('Express fees: $%s   Insurance fees: $%s   Insurance payouts: $%s'):format(round2(n('expressFees')), round2(n('insuranceFees')), round2(n('insurancePayouts'))),
+        ('Plus sold: %d ($%s)   Locker rentals: %d ($%s)'):format(n('plusSales'), round2(n('plusRevenue')), n('rentals'), round2(n('rentalRevenue'))),
+        ('Marketplace volume: $%s   Commission kept: $%s'):format(round2(n('marketGross')), round2(n('marketCommission'))),
+    }
+    local topLines = {}
+    for i = 1, math.min(5, #top) do topLines[#topLines + 1] = ('%s x%d'):format(top[i].id, top[i].qty) end
+    lines[#lines + 1] = 'Top items: ' .. (#topLines > 0 and table.concat(topLines, ', ') or '-')
+    say(src, table.concat(lines, '\n'))
+end
+
+commands.repair = function(src, args)
+    local apply = args[2] == 'apply'
+    local findings = PPRepair.run(apply)
+    if apply and #findings > 0 then PPStore.flush() PPLog.log('admin', src, ('repair applied: %d finding(s)'):format(#findings), {}) end
+    if #findings == 0 then return say(src, 'Nothing to repair.') end
+    local lines = { ('%d finding(s)%s:'):format(#findings, apply and ' (fixes applied)' or ' (run "ppadmin repair apply" to fix)') }
+    for i = 1, math.min(15, #findings) do lines[#lines + 1] = '- ' .. findings[i].text end
+    if #findings > 15 then lines[#lines + 1] = ('...and %d more (see the server console)'):format(#findings - 15) end
+    for i = 16, #findings do print('[as-postalprime] - ' .. findings[i].text) end
+    say(src, table.concat(lines, '\n'))
 end
 
 RegisterCommand('ppadmin', function(source, args)

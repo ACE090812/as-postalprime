@@ -152,6 +152,34 @@ function PPValidate.run()
         if (m.commissionPct or 0) < 0 or (m.commissionPct or 0) >= 100 then err('Config.marketplace.commissionPct must be 0-99') end
     end
 
+    -- Inventory capabilities
+    local inv = PPBridge.inventoryName()
+    if not PPBridge.supportsMetadata() then
+        warn('inventory "%s" cannot store item metadata, so sealed parcel boxes are skipped and orders are handed over as plain items', inv)
+    end
+
+    -- Shipping / insurance / loyalty / subscriptions / rentals
+    local ex = Config.shipping and Config.shipping.express
+    if ex and ex.enabled ~= false and ((ex.prepSeconds or 0) < 0 or (ex.fee or 0) < 0) then err('Config.shipping.express needs prepSeconds and fee of 0 or more') end
+    local ins = Config.insurance
+    if ins and ins.enabled ~= false and ((ins.pct or 0) <= 0 or (ins.minFee or 0) > (ins.maxFee or 0)) then err('Config.insurance: pct must be above 0 and minFee not above maxFee') end
+    local lo = Config.loyalty
+    if lo and lo.enabled ~= false then
+        if #(lo.tiers or {}) == 0 then warn('Config.loyalty.tiers is empty - everyone is in one tier') end
+        if (lo.redeem or {}).pointsPerDollar == nil or lo.redeem.pointsPerDollar <= 0 then err('Config.loyalty.redeem.pointsPerDollar must be above 0') end
+    end
+    local sub = Config.subscriptions
+    if sub and sub.enabled ~= false then
+        if #(sub.intervals or {}) == 0 then err('Config.subscriptions.intervals is empty') end
+        for i, iv in ipairs(sub.intervals or {}) do
+            if not iv.id or not iv.hours or iv.hours <= 0 then err('Config.subscriptions.intervals[%d] needs an id and hours above 0', i) end
+        end
+    end
+    local rent = Config.rentals
+    if rent and rent.enabled ~= false and inv ~= 'ox_inventory' then
+        warn('locker rentals need ox_inventory (they use a stash) - they are switched off with "%s"', inv)
+    end
+
     PPValidate.locales(errors, warns)
 
     print(PREFIX .. ('config check: %d problem(s), %d warning(s)'):format(#errors, #warns))

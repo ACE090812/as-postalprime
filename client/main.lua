@@ -99,6 +99,38 @@ RegisterNUICallback('as-postalprime/market:withdraw', function(_, cb)
     cb(lib.callback.await('as-postalprime:market:withdraw', false))
 end)
 
+RegisterNUICallback('as-postalprime/stats', function(data, cb)
+    cb(lib.callback.await('as-postalprime:stats', false, data))
+end)
+
+RegisterNUICallback('as-postalprime/subs:create', function(data, cb)
+    cb(lib.callback.await('as-postalprime:subs:create', false, data))
+end)
+
+RegisterNUICallback('as-postalprime/subs:cancel', function(data, cb)
+    cb(lib.callback.await('as-postalprime:subs:cancel', false, data))
+end)
+
+RegisterNUICallback('as-postalprime/subs:toggle', function(data, cb)
+    cb(lib.callback.await('as-postalprime:subs:toggle', false, data))
+end)
+
+RegisterNUICallback('as-postalprime/rentals:rent', function(data, cb)
+    cb(lib.callback.await('as-postalprime:rentals:rent', false, data))
+end)
+
+RegisterNUICallback('as-postalprime/rentals:extend', function(data, cb)
+    cb(lib.callback.await('as-postalprime:rentals:extend', false, data))
+end)
+
+RegisterNUICallback('as-postalprime/rentals:newCode', function(data, cb)
+    cb(lib.callback.await('as-postalprime:rentals:newCode', false, data))
+end)
+
+RegisterNUICallback('as-postalprime/market:setShop', function(data, cb)
+    cb(lib.callback.await('as-postalprime:market:setShop', false, data))
+end)
+
 -- ─── Live order tracking ──────────────────────────────────────────────────────
 -- "Track on map" in the Orders tab: while a player courier is driving the order over, a moving blip follows their van
 -- and the app shows an ETA. Polls the server every few seconds and stops when the order is delivered, the player

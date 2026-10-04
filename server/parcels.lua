@@ -31,7 +31,7 @@ exports('getLockers', function()
     return out
 end)
 
-exports('createParcel', function(cid, parcel)
+local function createParcel(cid, parcel)
     if type(cid) ~= 'string' or type(parcel) ~= 'table' or type(parcel.items) ~= 'table' or #parcel.items == 0 then
         return false, 'bad_request'
     end
@@ -110,7 +110,10 @@ exports('createParcel', function(cid, parcel)
     local src = onlineSources[cid]
     if src then TriggerClientEvent('as-postalprime:client:updated', src) end
     return true, nil, order.id
-end)
+end
+
+exports('createParcel', createParcel)
+PP.createParcel = createParcel
 
 -- ─── Status for other resources (the parts site tracks its orders with these) ────────────────
 -- getParcels(cid, refPrefix) -> list of parcels sent with createParcel (in flight and recent), newest first.

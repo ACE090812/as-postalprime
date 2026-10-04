@@ -351,6 +351,39 @@
     .sell-listing .nm small { display: block; color: var(--text-dim); font-weight: 500; }
     .sell-listing button { border: 1px solid var(--hairline); background: var(--elevated); color: var(--orange-dark); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
 
+    .bar-row { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 6px; }
+    .bar-row .lbl { width: 78px; color: var(--text-dim); font-weight: 600; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-row .bar { flex: 1; height: 8px; border-radius: 999px; background: var(--surface); overflow: hidden; }
+    .bar-row .bar i { display: block; height: 100%; background: var(--navy); border-radius: 999px; }
+    .bar-row .val { width: 56px; text-align: right; font-weight: 700; }
+    .info-card { margin: 0 12px 12px; background: var(--elevated); border: 1px solid var(--hairline); border-radius: 12px; padding: 14px; }
+    .info-card .ttl { font-size: 15px; font-weight: 800; }
+    .info-card .sub { font-size: 12px; color: var(--text-dim); margin-top: 3px; line-height: 1.4; }
+    .info-card .row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--hairline); font-size: 13px; margin-top: 8px; }
+    .info-card .row .nm { flex: 1; min-width: 0; font-weight: 600; }
+    .info-card .row .nm small { display: block; color: var(--text-dim); font-weight: 500; }
+    .info-card .row button, .mini-btn { border: 1px solid var(--hairline); background: var(--elevated); color: var(--navy); border-radius: 8px; padding: 6px 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .info-card .row button.warn { color: var(--orange-dark); }
+    .info-card select, .info-card input, .sub-box select {
+        border: 1px solid var(--hairline); border-radius: 8px; padding: 9px 10px; font-size: 13px; background: var(--elevated);
+        color: var(--text); font-family: inherit; box-sizing: border-box; width: 100%; min-width: 0;
+    }
+    .info-card .form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .info-card .form .wide { grid-column: 1 / -1; }
+    .info-card .go-btn { border: none; border-radius: 10px; padding: 10px 14px; font-weight: 800; font-size: 13px; background: var(--orange); color: #fff; cursor: pointer; }
+    .info-card .go-btn:disabled { opacity: 0.5; cursor: default; }
+    .tier-track { height: 6px; border-radius: 999px; background: var(--surface); margin-top: 10px; overflow: hidden; }
+    .tier-track i { display: block; height: 100%; background: var(--star); border-radius: 999px; }
+    .code-chip { font-family: monospace; font-weight: 800; letter-spacing: 0.12em; background: var(--surface); border-radius: 6px; padding: 2px 8px; }
+    .sub-box { margin-top: 14px; border: 1px dashed var(--hairline); border-radius: 10px; padding: 10px; }
+    .sub-box .sub-title { font-size: 13px; font-weight: 800; color: var(--green); }
+    .sub-box .form { display: grid; gap: 8px; margin-top: 8px; }
+    .shop-pills { display: flex; gap: 8px; padding: 10px 12px 0; overflow-x: auto; scrollbar-width: none; }
+    .shop-pill { flex-shrink: 0; border: 1px solid var(--hairline); background: var(--elevated); color: var(--text); border-radius: 12px; padding: 8px 12px; font-size: 12px; font-weight: 700; cursor: pointer; text-align: left; font-family: inherit; }
+    .shop-pill small { display: block; color: var(--text-dim); font-weight: 500; margin-top: 2px; }
+    .shop-pill.on { border-color: var(--navy); background: #eef3ff; }
+    .badge-pill { display: inline-block; font-size: 10.5px; font-weight: 800; border-radius: 4px; padding: 2px 6px; margin: 6px 6px 0 0; background: #eef3ff; color: var(--navy); }
+
     .tabbar {
         flex-shrink: 0; display: flex; border-top: 1px solid var(--hairline); background: var(--elevated);
         padding-bottom: 22px;
@@ -586,6 +619,14 @@
     var trackInfo = {};            // orderId -> latest { stage, eta, distance } from the live tracker (client/main.lua)
     var trackingId = null;         // the order being followed on the map
     var sellDraft = { item: '', qty: 1, price: '' };
+    var speed = 'standard';        // checkout shipping speed: 'standard' | 'express'
+    var insured = false;           // delivery insurance (home delivery)
+    var usePoints = false;         // redeem loyalty points at checkout
+    var subDraft = { open: false, interval: '', lockerId: '' };
+    var rentDraft = { lockerId: '', days: 1 };
+    var shopFilter = '';           // marketplace storefront (seller key) being viewed
+    var shopDraft = null;          // storefront edit form { name, tagline, icon }
+    var statsData = null;          // lifetime spending stats (loaded when the You tab opens)
 
     function post(endpoint, data) {
         return fetch('https://' + RESOURCE + '/' + endpoint, {
@@ -705,12 +746,36 @@
         return (state && state.home) ? (state.home.fee || 0) : 0;
     }
     // Checkout total: home delivery has its own single fee (free with Plus) instead of the normal delivery fee.
+    function expressCfg() { return state && state.shipping && state.shipping.express; }
+    function expressFee() {
+        var e = expressCfg();
+        if (speed !== 'express' || !e) return 0;
+        return isPlus() ? e.plusFee : e.fee;
+    }
+    function insuranceFee() {
+        var i = state && state.insurance;
+        if (!insured || !i || !(deliveryMode === 'home' && homeEnabled())) return 0;
+        return Math.round(Math.max(i.minFee, Math.min(i.maxFee, cartTotal() * i.pct / 100)) * 100) / 100;
+    }
+    // Dollars that redeeming loyalty points would take off right now (the server works out the real figure).
+    function pointsOff() {
+        var l = state && state.loyalty;
+        if (!usePoints || !l || !l.enabled || l.points < l.minPoints) return 0;
+        var payable = Math.max(0, cartTotal() - couponOff());
+        var dollars = Math.min(payable * l.maxPct / 100, Math.floor(l.points / l.pointsPerDollar * 100) / 100);
+        return Math.floor(dollars * 100) / 100;
+    }
+    function insuranceFeeQuote() {
+        var i = state && state.insurance;
+        if (!i) return 0;
+        return Math.round(Math.max(i.minFee, Math.min(i.maxFee, cartTotal() * i.pct / 100)) * 100) / 100;
+    }
     function couponOff() {
         return couponApplied ? couponApplied.discount : 0;
     }
     function checkoutTotal() {
         var base = deliveryMode === 'home' && homeEnabled() ? cartTotal() + (isPlus() ? 0 : homeFee()) : cartGrandTotal();
-        return Math.max(0, base - couponOff());
+        return Math.max(0, base - couponOff() - pointsOff() + expressFee() + insuranceFee());
     }
     function setDeliveryMode(mode) {
         deliveryMode = mode;
@@ -826,6 +891,9 @@
             items: Object.assign({}, cart),
             giftTo: (!isHome && giftMode) ? giftName.trim() : undefined,
             coupon: couponApplied ? couponApplied.code : undefined,
+            speed: speed === 'express' ? 'express' : undefined,
+            insured: (isHome && insured) ? true : undefined,
+            points: usePoints ? true : undefined,
         }).then(function (res) {
             busy = false;
             if (!res || !res.ok) {
@@ -836,6 +904,7 @@
             state.orders = res.orders;
             cart = {};
             couponApplied = null; couponInput = ''; couponMsg = '';
+            speed = 'standard'; insured = false; usePoints = false;
             checkoutLocker = null;
             var wasGift = res.gifted;
             var giftedTo = res.giftedTo;
@@ -876,6 +945,24 @@
         if (!on) delete trackInfo[orderId];
         post('as-postalprime/track', { orderId: orderId, on: on });
         render();
+    }
+
+    // Posts an action and stores the fresh `res[key]` into state[key]. Used by subscriptions / rentals / storefront.
+    function actionCall(endpoint, payload, key, okMsg) {
+        if (busy) return;
+        busy = true; render();
+        post('as-postalprime/' + endpoint, payload).then(function (res) {
+            busy = false;
+            if (!res || !res.ok) { showToast((res && res.error) || t('app.err.market')); render(); return; }
+            state[key] = res[key];
+            render();
+            if (okMsg) showToast(okMsg);
+        });
+    }
+    function loadStats() {
+        post('as-postalprime/stats').then(function (res) {
+            if (res && res.ok) { statsData = res.stats; render(); }
+        });
     }
 
     function marketCall(endpoint, payload, okMsg) {
@@ -1003,7 +1090,8 @@
             var stockOk = !filterStock || !outOfStock(item);
             var saleOk = !filterSale || !!item.deal;
             var boughtOk = !filterBought || isBoughtBefore(item.id);
-            return catOk && searchOk && stockOk && saleOk && boughtOk;
+            var shopOk = !(activeCategory === 'market' && shopFilter) || item.sellerKey === shopFilter;
+            return catOk && searchOk && stockOk && saleOk && boughtOk && shopOk;
         });
         filtered = sortItems(filtered);
 
@@ -1026,6 +1114,12 @@
             [['featured', 'app.sort.featured'], ['priceLow', 'app.sort.priceLow'], ['priceHigh', 'app.sort.priceHigh'], ['rating', 'app.sort.rating'], ['deals', 'app.sort.deals']].map(function (o) {
                 return '<option value="' + o[0] + '"' + (sortBy === o[0] ? ' selected' : '') + '>' + esc(t(o[1])) + '</option>';
             }).join('') + '</select></div>';
+        if (activeCategory === 'market' && state.shops && state.shops.length) {
+            html += '<div class="shop-pills">' + state.shops.map(function (sh) {
+                return '<button class="shop-pill ' + (shopFilter === sh.key ? 'on' : '') + '" data-shop="' + sh.key + '">' + esc(sh.icon + ' ' + sh.name) +
+                    '<small>' + esc(sh.tagline || t('app.shop.items', sh.items)) + '</small></button>';
+            }).join('') + '</div>';
+        }
         var catLabel = t('app.section.recommended');
         if (activeCategory === 'wishlist') catLabel = t('app.section.saved');
         else if (activeCategory !== 'all') {
@@ -1144,6 +1238,22 @@
         html += '</div>';
         }
 
+        var ex = expressCfg();
+        if (ex) {
+            html += '<div class="seg" style="margin-top:12px;">' +
+                '<button class="seg-btn ' + (speed !== 'express' ? 'active' : '') + '" data-speed="standard">' + esc(t('app.ship.standard')) + '</button>' +
+                '<button class="seg-btn ' + (speed === 'express' ? 'active' : '') + '" data-speed="express">' + esc(t('app.ship.express', (isPlus() ? ex.plusFee : ex.fee).toFixed(2))) + '</button>' +
+                '</div>';
+        }
+        if (homeMode && state.insurance) {
+            html += '<div class="gift-toggle-row"><div><div class="label">' + esc(t('app.insure.title', insuranceFeeQuote().toFixed(2))) + '</div><div class="sub">' + esc(t('app.insure.sub')) + '</div></div>' +
+                '<label class="switch"><input type="checkbox" id="insureToggle" ' + (insured ? 'checked' : '') + '><span class="track"></span></label></div>';
+        }
+        var loy = state.loyalty;
+        if (loy && loy.enabled && loy.points >= loy.minPoints) {
+            html += '<div class="gift-toggle-row"><div><div class="label">' + esc(t('app.points.use', loy.points)) + '</div><div class="sub">' + esc(t('app.points.sub', loy.pointsPerDollar, loy.maxPct)) + '</div></div>' +
+                '<label class="switch"><input type="checkbox" id="pointsToggle" ' + (usePoints ? 'checked' : '') + '><span class="track"></span></label></div>';
+        }
         if (!homeMode) {
         html += '<div class="gift-toggle-row">' +
             '<div><div class="label">' + esc(t('app.gift.title')) + '</div><div class="sub">' + esc(t('app.gift.sub')) + '</div></div>' +
@@ -1167,6 +1277,9 @@
                 '<span style="color:var(--green);font-weight:700;">' + esc(t('app.freeWithPlus')) + '</span>' :
                 '<span>$' + (homeMode ? homeFee() : deliveryFee()).toFixed(2) + '</span>') + '</div>' +
             (couponApplied ? '<div class="summary-row"><span>' + esc(t('app.coupon.discount')) + '</span><span style="color:var(--green);font-weight:700;">−$' + couponApplied.discount.toFixed(2) + '</span></div>' : '') +
+            (expressFee() > 0 ? '<div class="summary-row"><span>' + esc(t('app.ship.expressRow')) + '</span><span>$' + expressFee().toFixed(2) + '</span></div>' : '') +
+            (insuranceFee() > 0 ? '<div class="summary-row"><span>' + esc(t('app.insure.row')) + '</span><span>$' + insuranceFee().toFixed(2) + '</span></div>' : '') +
+            (pointsOff() > 0 ? '<div class="summary-row"><span>' + esc(t('app.points.row')) + '</span><span style="color:var(--green);font-weight:700;">−$' + pointsOff().toFixed(2) + '</span></div>' : '') +
             '<div class="summary-row total"><span>' + esc(t('app.orderTotal')) + '</span><span>$' + checkoutTotal().toFixed(2) + '</span></div>' +
             (giftMode && !homeMode ? '<div class="stock-note low" style="margin:4px 12px 0;">' + esc(t('app.gift.note')) + '</div>' : '') +
             (isPlus() || giftMode ? '' : '<div class="plus-nudge" data-tab="you">' + esc(t('app.plusNudge')) + '</div>') +
@@ -1194,6 +1307,11 @@
                     '<div class="row1"><div><div class="items">' + itemsLabel + '</div>' +
                     '<div class="locker">' + (o.delivery === 'home' ? '🏠 ' : '📦 ') + o.lockerLabel + ' · $' + o.total.toFixed(2) + '</div></div>' +
                     '<span class="status-pill ' + statusClass + '">' + esc(statusLabel) + '</span></div>';
+                if (o.speed === 'express' || o.expressFee) html2 += '<span class="badge-pill">⚡ ' + esc(t('app.badge.express')) + '</span>';
+                if (o.insured) html2 += '<span class="badge-pill">🛡️ ' + esc(t('app.badge.insured')) + '</span>';
+                if (o.subscription) html2 += '<span class="badge-pill">🔁 ' + esc(t('app.badge.subscription')) + '</span>';
+                if (o.insurancePaid) html2 += '<div class="gifted-note">' + esc(t('app.insuredPaid', o.insurancePaid.toFixed(2))) + '</div>';
+                if (o.pointsEarned) html2 += '<div class="gifted-note">' + esc(t('app.pointsEarned', o.pointsEarned)) + '</div>';
                 if (o.giftedBy) {
                     html2 += '<div class="gifted-note">' + esc(t('app.giftFrom', o.giftedBy)) + '</div>';
                 }
@@ -1317,10 +1435,90 @@
         } else {
             html += '<div class="sell-sub" style="margin-top:10px;">' + esc(t('app.sell.jobOnly')) + '</div>';
         }
+        if (m.canSell) {
+            if (!shopDraft) shopDraft = { name: (m.shop && m.shop.name) || '', tagline: (m.shop && m.shop.tagline) || '', icon: (m.shop && m.shop.icon) || '🏪' };
+            html += '<div class="sell-sub" style="margin-top:14px;font-weight:700;">' + esc(t('app.shop.title')) + '</div><div class="sell-form">' +
+                '<input id="shopName" maxlength="30" placeholder="' + esc(t('app.shop.name')) + '" value="' + esc(shopDraft.name) + '">' +
+                '<input id="shopIcon" maxlength="4" placeholder="🏪" value="' + esc(shopDraft.icon) + '">' +
+                '<input id="shopTagline" class="wide" style="grid-column:1/-1;" maxlength="60" placeholder="' + esc(t('app.shop.tagline')) + '" value="' + esc(shopDraft.tagline) + '">' +
+                '<button class="sell-btn sell-list-btn" id="shopSave" ' + (busy ? 'disabled' : '') + '>' + esc(t('app.shop.save')) + '</button></div>';
+        }
         (m.mine || []).forEach(function (l) {
             html += '<div class="sell-listing"><div class="nm">' + esc(l.icon + ' ' + l.label) + '<small>' + esc(t('app.sell.listing', l.qty, l.price.toFixed(2))) + '</small></div>' +
                 '<button data-sellremove="' + l.id + '">' + esc(t('app.sell.remove')) + '</button></div>';
         });
+        return html + '</div>';
+    }
+
+    function bars(rows, fmtVal) {
+        var max = 0;
+        rows.forEach(function (r) { if (r.total > max) max = r.total; });
+        return rows.map(function (r) {
+            var w = max > 0 ? Math.round(r.total / max * 100) : 0;
+            return '<div class="bar-row"><span class="lbl">' + esc(r.label) + '</span><span class="bar"><i style="width:' + w + '%"></i></span><span class="val">' + fmtVal(r.total) + '</span></div>';
+        }).join('');
+    }
+
+    function renderLoyalty() {
+        var l = state && state.loyalty;
+        if (!l || !l.enabled) return '';
+        var pct = l.nextAt ? Math.max(0, Math.min(100, Math.round(l.lifetime / l.nextAt * 100))) : 100;
+        return '<div class="info-card"><div class="ttl">⭐ ' + esc(t('app.loyalty.title', l.tier)) + '</div>' +
+            '<div class="sub">' + esc(t('app.loyalty.sub', l.points, l.multiplier)) + '</div>' +
+            '<div class="tier-track"><i style="width:' + pct + '%"></i></div>' +
+            '<div class="sub">' + esc(l.nextTier ? t('app.loyalty.next', l.nextAt - l.lifetime, l.nextTier) : t('app.loyalty.top')) + '</div></div>';
+    }
+
+    function renderSubs() {
+        var sb = state && state.subs;
+        if (!sb || !sb.enabled || !sb.list.length) return '';
+        var html = '<div class="info-card"><div class="ttl">🔁 ' + esc(t('app.subs.title')) + '</div>';
+        sb.list.forEach(function (x) {
+            html += '<div class="row"><div class="nm">' + esc(x.icon + ' ' + x.qty + '× ' + x.label) +
+                '<small>' + esc(x.paused ? t('app.subs.paused') : t('app.subs.next', x.intervalLabel, fmtDate(x.nextAt))) + ' · ' + esc(x.lockerLabel || '') + '</small></div>' +
+                '<button data-subtoggle="' + x.id + '">' + esc(x.paused ? t('app.subs.resume') : t('app.subs.pause')) + '</button>' +
+                '<button class="warn" data-subcancel="' + x.id + '">' + esc(t('app.subs.cancel')) + '</button></div>';
+        });
+        return html + '</div>';
+    }
+
+    function renderRentals() {
+        var r = state && state.rentals;
+        if (!r || !r.enabled) return '';
+        if (!rentDraft.lockerId && r.lockers.length) rentDraft.lockerId = r.lockers[0].id;
+        var html = '<div class="info-card"><div class="ttl">🔐 ' + esc(t('app.rent.title')) + '</div><div class="sub">' + esc(t('app.rent.sub', r.pricePerDay)) + '</div>';
+        r.mine.forEach(function (x) {
+            html += '<div class="row"><div class="nm">' + esc(x.lockerLabel) + ' · <span class="code-chip">' + esc(x.code) + '</span>' +
+                '<small>' + esc(x.expired ? t('app.rent.expired', fmtDate(x.graceEndsAt)) : t('app.rent.until', fmtDate(x.expiresAt))) + '</small></div>' +
+                '<button data-rentextend="' + x.id + '">' + esc(t('app.rent.extend')) + '</button>' +
+                '<button data-rentcode="' + x.id + '">' + esc(t('app.rent.newCode')) + '</button></div>';
+        });
+        if (r.mine.length < r.maxPerPlayer) {
+            html += '<div class="form">' +
+                '<select id="rentLocker" class="wide">' + r.lockers.map(function (l) {
+                    return '<option value="' + l.id + '"' + (rentDraft.lockerId === l.id ? ' selected' : '') + (l.free <= 0 ? ' disabled' : '') + '>' + esc(l.label + ' (' + t('app.rent.free', l.free) + ')') + '</option>';
+                }).join('') + '</select>' +
+                '<input id="rentDays" type="number" min="1" max="' + r.maxDays + '" value="' + rentDraft.days + '">' +
+                '<button class="go-btn" id="rentGo" ' + (busy ? 'disabled' : '') + '>' + esc(t('app.rent.go', (r.pricePerDay * (parseInt(rentDraft.days, 10) || 1)))) + '</button></div>';
+        }
+        return html + '</div>';
+    }
+
+    function renderStats() {
+        if (!statsData) return '';
+        var s = statsData;
+        var html = '<div class="info-card"><div class="ttl">📊 ' + esc(t('app.stats.title')) + '</div>' +
+            '<div class="sub">' + esc(t('app.stats.sub', s.orders, s.spent.toFixed(2), s.saved.toFixed(2))) + '</div>' +
+            '<div class="sub" style="margin-top:10px;font-weight:700;">' + esc(t('app.stats.months')) + '</div>' +
+            bars(s.months.map(function (m) { return { label: m.label, total: m.total }; }), function (v) { return '$' + Math.round(v); });
+        if (s.cats.length) {
+            html += '<div class="sub" style="margin-top:12px;font-weight:700;">' + esc(t('app.stats.cats')) + '</div>' + bars(s.cats, function (v) { return '$' + Math.round(v); });
+        }
+        if (s.top.length) {
+            html += '<div class="sub" style="margin-top:12px;font-weight:700;">' + esc(t('app.stats.top')) + '</div>' +
+                s.top.map(function (x) { return '<div class="bar-row"><span class="lbl" style="width:auto;flex:1;">' + esc(x.icon + ' ' + x.label) + '</span><span class="val">×' + x.qty + '</span></div>'; }).join('');
+        }
+        if (s.returned > 0) html += '<div class="sub" style="margin-top:10px;">' + esc(t('app.stats.returned', s.returned.toFixed(2))) + '</div>';
         return html + '</div>';
     }
 
@@ -1343,6 +1541,9 @@
 
         html += renderPlusCard();
         html += renderSell();
+        html += renderLoyalty();
+        html += renderSubs();
+        html += renderRentals();
 
         html += '<div class="you-stats">' +
             '<div class="you-stat"><div class="n">' + orders.length + '</div><div class="l">' + esc(t('app.you.ordersPlaced')) + '</div></div>' +
@@ -1353,6 +1554,7 @@
             '<button class="you-row" data-tab="orders"><span>' + esc(t('app.you.orders')) + (pendingReadyCount() ? ' <span class="you-row-badge">' + esc(t('app.you.ready', pendingReadyCount())) + '</span>' : '') + '</span><span class="chev">›</span></button>' +
             '<div class="you-row" style="cursor:default;"><span>' + esc(t('app.you.reviews')) + '</span><span>' + reviewed + '</span></div>' +
             '</div>';
+        html += renderStats();
         return html;
     }
 
@@ -1385,12 +1587,31 @@
                 '</div></div>') +
             '<button class="primary-btn" id="confirmAdd" ' + (oos ? 'disabled' : '') + '>' +
             esc(oos ? t('app.outOfStock') : t('app.sheet.add', detailItem.qty, p.whole, p.cents)) + '</button>' +
+            renderSubscribeBox(item) +
             (rel.list.length ? '<div class="rev-heading rel">' + esc(rel.byPurchases ? t('app.alsoBought') : t('app.moreLike')) + '</div><div class="rel-row">' +
                 rel.list.map(function (r) {
                     return '<button class="rel-tile" data-related="' + r.id + '"><div class="ic">' + r.icon + '</div><div class="nm">' + esc(r.label) + '</div><div class="pr">$' + r.price.toFixed(2) + '</div></button>';
                 }).join('') + '</div>' : '') +
             renderReviews(item) +
             '</div></div>';
+    }
+
+    function renderSubscribeBox(item) {
+        var sb = state && state.subs;
+        if (!sb || !sb.enabled || item.seller || outOfStock(item)) return '';
+        var existing = sb.list.some(function (x) { return x.itemId === item.id; });
+        if (existing) return '<div class="sub-box"><div class="sub-title">🔁 ' + esc(t('app.sub.already')) + '</div></div>';
+        if (sb.list.length >= sb.max) return '';
+        if (!subDraft.open) {
+            return '<div class="sub-box"><button class="mini-btn" id="subOpen">🔁 ' + esc(t('app.sub.cta', sb.discountPct)) + '</button></div>';
+        }
+        if (!subDraft.interval && sb.intervals.length) subDraft.interval = sb.intervals[0].id;
+        if (!subDraft.lockerId && state.lockers.length) subDraft.lockerId = state.lockers[0].id;
+        return '<div class="sub-box"><div class="sub-title">🔁 ' + esc(t('app.sub.title', sb.discountPct)) + '</div><div class="form">' +
+            '<select id="subInterval">' + sb.intervals.map(function (i) { return '<option value="' + i.id + '"' + (subDraft.interval === i.id ? ' selected' : '') + '>' + esc(i.label) + '</option>'; }).join('') + '</select>' +
+            '<select id="subLocker">' + state.lockers.map(function (l) { return '<option value="' + l.id + '"' + (subDraft.lockerId === l.id ? ' selected' : '') + '>' + esc(l.label) + '</option>'; }).join('') + '</select>' +
+            '<button class="primary-btn" id="subConfirm" ' + (busy ? 'disabled' : '') + '>' + esc(t('app.sub.confirm', detailItem.qty)) + '</button></div>' +
+            '<div class="home-note" style="margin:8px 0 0;">' + esc(t('app.sub.note')) + '</div></div>';
     }
 
     function renderReviews(item) {
@@ -1553,6 +1774,64 @@
             el.onclick = function () { toggleTrack(el.getAttribute('data-track')); };
         });
 
+        root.querySelectorAll('[data-shop]').forEach(function (el) {
+            el.onclick = function () { var k = el.getAttribute('data-shop'); shopFilter = shopFilter === k ? '' : k; render(); };
+        });
+        root.querySelectorAll('[data-speed]').forEach(function (el) {
+            el.onclick = function () { speed = el.getAttribute('data-speed'); render(); };
+        });
+        var insureToggle = document.getElementById('insureToggle');
+        if (insureToggle) insureToggle.onchange = function (e) { insured = e.target.checked; render(); };
+        var pointsToggle = document.getElementById('pointsToggle');
+        if (pointsToggle) pointsToggle.onchange = function (e) { usePoints = e.target.checked; render(); };
+
+        var subOpen = document.getElementById('subOpen');
+        if (subOpen) subOpen.onclick = function () { subDraft.open = true; render(); };
+        var subInterval = document.getElementById('subInterval');
+        if (subInterval) subInterval.onchange = function (e) { subDraft.interval = e.target.value; };
+        var subLocker = document.getElementById('subLocker');
+        if (subLocker) subLocker.onchange = function (e) { subDraft.lockerId = e.target.value; };
+        var subConfirm = document.getElementById('subConfirm');
+        if (subConfirm) subConfirm.onclick = function () {
+            var id = detailItem && detailItem.id, qty = detailItem ? detailItem.qty : 1;
+            subDraft.open = false;
+            detailItem = null; // close the product sheet; the subscription shows up in the You tab
+            actionCall('subs:create', { itemId: id, qty: qty, interval: subDraft.interval, lockerId: subDraft.lockerId }, 'subs', t('app.toast.subscribed'));
+        };
+        root.querySelectorAll('[data-subtoggle]').forEach(function (el) {
+            el.onclick = function () { actionCall('subs:toggle', { id: el.getAttribute('data-subtoggle') }, 'subs'); };
+        });
+        root.querySelectorAll('[data-subcancel]').forEach(function (el) {
+            el.onclick = function () { actionCall('subs:cancel', { id: el.getAttribute('data-subcancel') }, 'subs', t('app.toast.unsubscribed')); };
+        });
+
+        var rentLocker = document.getElementById('rentLocker');
+        if (rentLocker) rentLocker.onchange = function (e) { rentDraft.lockerId = e.target.value; };
+        var rentDays = document.getElementById('rentDays');
+        if (rentDays) rentDays.oninput = function (e) { rentDraft.days = e.target.value; };
+        var rentGo = document.getElementById('rentGo');
+        if (rentGo) rentGo.onclick = function () {
+            actionCall('rentals:rent', { lockerId: rentDraft.lockerId, days: parseInt(rentDraft.days, 10) || 1 }, 'rentals', t('app.toast.rented'));
+        };
+        root.querySelectorAll('[data-rentextend]').forEach(function (el) {
+            el.onclick = function () { actionCall('rentals:extend', { id: el.getAttribute('data-rentextend'), days: parseInt(rentDraft.days, 10) || 1 }, 'rentals', t('app.toast.extended')); };
+        });
+        root.querySelectorAll('[data-rentcode]').forEach(function (el) {
+            el.onclick = function () { actionCall('rentals:newCode', { id: el.getAttribute('data-rentcode') }, 'rentals', t('app.toast.newCode')); };
+        });
+
+        var shopName = document.getElementById('shopName');
+        if (shopName) shopName.oninput = function (e) { shopDraft.name = e.target.value; };
+        var shopIcon = document.getElementById('shopIcon');
+        if (shopIcon) shopIcon.oninput = function (e) { shopDraft.icon = e.target.value; };
+        var shopTagline = document.getElementById('shopTagline');
+        if (shopTagline) shopTagline.oninput = function (e) { shopDraft.tagline = e.target.value; };
+        var shopSave = document.getElementById('shopSave');
+        if (shopSave) shopSave.onclick = function () {
+            actionCall('market:setShop', { name: shopDraft.name, tagline: shopDraft.tagline, icon: shopDraft.icon }, 'market', t('app.toast.shopSaved'));
+            shopDraft = null;
+        };
+
         var sellItem = document.getElementById('sellItem');
         if (sellItem) sellItem.onchange = function (e) { sellDraft.item = e.target.value; };
         var sellQty = document.getElementById('sellQty');
@@ -1673,7 +1952,11 @@
         if (renewPlusBtn) renewPlusBtn.onclick = function () { subscribePlus(); };
 
         root.querySelectorAll('.tab, .icon-btn[data-tab], .you-row[data-tab], .promo[data-tab], .plus-nudge[data-tab]').forEach(function (el) {
-            el.onclick = el.onclick || function () { tab = el.getAttribute('data-tab'); render(); };
+            el.onclick = el.onclick || function () {
+                tab = el.getAttribute('data-tab');
+                if (tab === 'you') loadStats();
+                render();
+            };
         });
     }
 
