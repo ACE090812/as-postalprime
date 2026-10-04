@@ -7,20 +7,126 @@ order from that locker with `as-interact`, `ox_target` or `qb-target` and a pick
 
 ## Screenshots
 
-Captured from the real `ui/index.html` with sample data (what you see in-game depends on your catalog, lockers and config).
+Captured from the real `ui/index.html`, `ui/widget.html` and courier depot with sample data (what you see in-game depends on your catalog, lockers and config).
+
+### Shopping
 
 <table>
   <tr>
-    <td align="center"><img src="docs/screenshots/01-home-deals.png" width="230" alt="Home with a lightning deal, deal tags, filters and sorting"><br><sub><b>Home</b> - deals, filters, sorting</sub></td>
-    <td align="center"><img src="docs/screenshots/02-product-subscribe.png" width="230" alt="Product page with subscribe and save"><br><sub><b>Product</b> - subscribe &amp; save, also bought</sub></td>
-    <td align="center"><img src="docs/screenshots/03-marketplace.png" width="230" alt="Marketplace with seller storefronts"><br><sub><b>Marketplace</b> - seller storefronts</sub></td>
-    <td align="center"><img src="docs/screenshots/04-checkout.png" width="230" alt="Checkout with express shipping, insurance, loyalty points and coupon"><br><sub><b>Checkout</b> - express, insurance, points, coupon</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/shop-01-home.png" width="200" alt="Home"><br><sub>Home</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/shop-02-home-scrolled.png" width="200" alt="Product grid"><br><sub>Product grid</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/shop-03-search.png" width="200" alt="Search"><br><sub>Search</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/shop-04-category.png" width="200" alt="Categories"><br><sub>Categories</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/screenshots/05-orders.png" width="230" alt="Orders with pickup code countdown, badges and tracking"><br><sub><b>Orders</b> - pickup code, badges, tracking</sub></td>
-    <td align="center"><img src="docs/screenshots/06-returns.png" width="230" alt="Returning items from a collected order"><br><sub><b>Returns</b> - return collected items</sub></td>
-    <td align="center"><img src="docs/screenshots/07-you-tab.png" width="230" alt="You tab with loyalty, subscriptions and locker rentals"><br><sub><b>You</b> - loyalty, subscriptions, rentals, selling</sub></td>
-    <td align="center"><img src="docs/screenshots/08-stats.png" width="230" alt="Spending stats"><br><sub><b>Stats</b> - your spending</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/shop-05-saved.png" width="200" alt="Saved items (wishlist)"><br><sub>Saved items (wishlist)</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/shop-06-product.png" width="200" alt="Product page"><br><sub>Product page</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/shop-07-product-reviews.png" width="200" alt="Reviews and also bought"><br><sub>Reviews and "also bought"</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/shop-08-out-of-stock.png" width="200" alt="Out of stock"><br><sub>Out of stock</sub></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/shop-09-cart.png" width="200" alt="Cart"><br><sub>Cart</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/shop-10-checkout-locker.png" width="200" alt="Checkout: pick a locker"><br><sub>Checkout: pick a locker</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/shop-11-checkout-gift.png" width="200" alt="Checkout: send as a gift"><br><sub>Checkout: send as a gift</sub></td>
+    <td></td>
+  </tr>
+</table>
+
+### Sales, shipping options and subscriptions
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/sale-01-deals.png" width="200" alt="Lightning and daily deals"><br><sub>Lightning and daily deals</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/sale-02-on-sale-filter.png" width="200" alt="On-sale filter"><br><sub>On-sale filter</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/sale-03-checkout-coupon-plus.png" width="200" alt="Coupon applied (Plus member)"><br><sub>Coupon applied (Plus member)</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/ship-01-home-express-insurance.png" width="200" alt="Home delivery: express and insurance"><br><sub>Home delivery: express and insurance</sub></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/ship-02-total.png" width="200" alt="Itemised total"><br><sub>Itemised total</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/sub-01-subscribe.png" width="200" alt="Subscribe and save"><br><sub>Subscribe &amp; save</sub></td>
+    <td></td>
+    <td></td>
+  </tr>
+</table>
+
+### Orders
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/orders-01-in-progress.png" width="200" alt="Preparing and ready"><br><sub>Preparing and ready</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/orders-02-waiting-courier.png" width="200" alt="Waiting for a courier"><br><sub>Waiting for a courier</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/orders-03-out-for-delivery.png" width="200" alt="Out for delivery"><br><sub>Out for delivery</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/orders-04-live-tracking.png" width="200" alt="Live tracking and ETA"><br><sub>Live tracking and ETA</sub></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/orders-05-delivered-insured.png" width="200" alt="Delivered, insured"><br><sub>Delivered, insured</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/orders-06-history-returns.png" width="200" alt="History: returns and points"><br><sub>History: returns and points</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/orders-07-damaged-expired-cancelled.png" width="200" alt="Damaged, expired, cancelled"><br><sub>Damaged, expired, cancelled</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/orders-08-write-review.png" width="200" alt="Write a review"><br><sub>Write a review</sub></td>
+  </tr>
+</table>
+
+### Your account
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/you-01-profile-plus.png" width="250" alt="Profile and Postal Prime Plus"><br><sub>Profile and Postal Prime Plus</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/you-02-active-plus-selling.png" width="250" alt="Plus member who sells"><br><sub>Plus member who sells</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/you-03-seller.png" width="250" alt="Seller panel and storefront"><br><sub>Seller panel and storefront</sub></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/you-04-loyalty-subscriptions.png" width="250" alt="Loyalty tier and subscriptions"><br><sub>Loyalty tier and subscriptions</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/you-05-locker-rentals.png" width="250" alt="Locker rentals"><br><sub>Locker rentals</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/you-06-spending-stats.png" width="250" alt="Spending stats"><br><sub>Spending stats</sub></td>
+  </tr>
+</table>
+
+### Marketplace
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/market-01-storefronts.png" width="250" alt="Seller storefronts"><br><sub>Seller storefronts</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/market-02-one-shop.png" width="250" alt="One shop"><br><sub>One shop</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/market-03-listing.png" width="250" alt="A player listing"><br><sub>A player listing</sub></td>
+  </tr>
+</table>
+
+### Locker keypad
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/locker-01-keypad.png" width="200" alt="Pickup keypad"><br><sub>Pickup keypad</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/locker-02-wrong-code.png" width="200" alt="Wrong code"><br><sub>Wrong code</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/locker-03-lockout.png" width="200" alt="Keypad lockout"><br><sub>Keypad lockout</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/locker-04-opened.png" width="200" alt="Door opened"><br><sub>Door opened</sub></td>
+  </tr>
+</table>
+
+### Phone widgets
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/widget-01-small-ready.png" width="200" alt="Small widget: ready with code"><br><sub>Small widget: ready with code</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/widget-02-small-preparing.png" width="200" alt="Small widget: preparing"><br><sub>Small widget: preparing</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/widget-03-small-out-for-delivery.png" width="200" alt="Small widget: out for delivery"><br><sub>Small widget: out for delivery</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/widget-04-medium.png" width="200" alt="Medium widget"><br><sub>Medium widget</sub></td>
+  </tr>
+</table>
+
+### Courier job
+
+<table>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/courier-01-shift.png" width="420" alt="Depot: shift"><br><sub>Depot: shift</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/courier-02-vehicles.png" width="420" alt="Depot: vehicles"><br><sub>Depot: vehicles</sub></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/courier-03-order-board.png" width="420" alt="Depot: order board"><br><sub>Depot: order board</sub></td>
+    <td align="center" valign="top"><img src="docs/screenshots/courier-04-my-run.png" width="420" alt="Depot: my run"><br><sub>Depot: my run</sub></td>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><img src="docs/screenshots/courier-05-run-hud.png" width="420" alt="Run HUD and progress bar"><br><sub>Run HUD and progress bar</sub></td>
+    <td></td>
   </tr>
 </table>
 
