@@ -302,7 +302,7 @@
         margin-left: auto; border: 1px solid var(--hairline); background: var(--elevated); color: var(--text);
         border-radius: 8px; padding: 5px 8px; font-size: 11.5px; font-family: inherit;
     }
-    .coupon-row { display: flex; gap: 8px; margin: 0 0 8px; }
+    .coupon-row { display: flex; gap: 8px; margin: 0 12px 10px; }
     .coupon-row input {
         flex: 1; border: 1px solid var(--hairline); border-radius: 10px; padding: 11px 12px; font-size: 13.5px;
         background: var(--elevated); color: var(--text); text-transform: uppercase; font-family: inherit; box-sizing: border-box; min-width: 0;
@@ -1240,7 +1240,7 @@
 
         var ex = expressCfg();
         if (ex) {
-            html += '<div class="seg" style="margin-top:12px;">' +
+            html += '<div class="seg" style="margin:12px 12px 0;">' +
                 '<button class="seg-btn ' + (speed !== 'express' ? 'active' : '') + '" data-speed="standard">' + esc(t('app.ship.standard')) + '</button>' +
                 '<button class="seg-btn ' + (speed === 'express' ? 'active' : '') + '" data-speed="express">' + esc(t('app.ship.express', (isPlus() ? ex.plusFee : ex.fee).toFixed(2))) + '</button>' +
                 '</div>';
