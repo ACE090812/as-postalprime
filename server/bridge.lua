@@ -245,7 +245,10 @@ function PPBridge.registerUsable(itemName, handler)
                 local ok, removed = pcall(function() return exports.ox_inventory:RemoveItem(src, itemName, 1, nil, slot) end)
                 return ok and removed and true or false
             end
-            handler(src, (s and s.metadata) or {}, removeSelf)
+            -- Returning false from usingItem cancels the use, so a handler that could not do its job (inventory too full
+            -- to unpack a parcel) can stop ox_inventory consuming the item.
+            local result = handler(src, (s and s.metadata) or {}, removeSelf)
+            if result == false then return false end
         end)
         return
     end

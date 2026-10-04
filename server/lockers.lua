@@ -336,11 +336,13 @@ end)
 -- Opening a pp_parcel_s/m/l/xl box: unpack the real items from its metadata, remove the (one) box
 -- item itself, then let the player know. Registered for all four sizes since they all behave the
 -- same way - only the box's own weight/label differs.
--- Opens a sealed parcel. It is done as one all-or-nothing step so a parcel can never be lost:
---   1. take the box out of the inventory first (so its own weight and slot are free for the contents),
---   2. add every item, checking each add really worked,
---   3. if anything fails, take back whatever was added, put the box back (with its contents) and say why -
---      to the player as a toast and to the server console with the exact item that caused it.
+-- Opens a sealed parcel as one all-or-nothing step so a parcel can never be lost:
+--   1. add every item, checking each add really worked (the box is still in the inventory at this point);
+--   2. only then remove the box from ITS OWN slot;
+--   3. if anything fails, take back whatever was added and leave the box exactly where it was, then say why - as a
+--      toast to the player and a line in the server console naming the item and the reason.
+-- The order matters: ox_inventory itself acts on the used slot right after the item's export returns, so the box's slot
+-- must not be freed (and reused by one of the new items) before then, or the inventory would take the new item back.
 local function openParcelBox(source, meta, boxItem, removeBox)
     if type(meta) ~= 'table' or type(meta.items) ~= 'table' or #meta.items == 0 then
         print(('[as-postalprime] a %s was used by source %s but has no contents in its metadata, so there is nothing to unpack (a box given out before giveBoxItem was turned on, or the inventory dropped its metadata).'):format(boxItem, tostring(source)))
@@ -354,27 +356,30 @@ local function openParcelBox(source, meta, boxItem, removeBox)
         contents[#contents + 1] = { name = entry and entry.item or it.item or it.id, qty = tonumber(it.qty) or 1, metadata = it.metadata }
     end
 
-    if not removeBox() then
-        print(('[as-postalprime] could not take the %s out of source %s\'s inventory, so it was not opened.'):format(boxItem, tostring(source)))
-        return false
-    end
-
     local added, failed = {}, nil
     for _, c in ipairs(contents) do
         if not PPBridge.addItem(source, c.name, c.qty, c.metadata) then failed = c break end
         added[#added + 1] = c
     end
 
-    if failed then
+    local function rollback()
         for _, c in ipairs(added) do PPBridge.removeItem(source, c.name, c.qty) end
-        local restored = PPBridge.addItem(source, boxItem, 1, meta)
-        print(('[as-postalprime] could not unpack %s for source %s: adding %dx "%s" failed (%s). %s'):format(
+    end
+
+    if failed then
+        rollback()
+        print(('[as-postalprime] could not unpack %s for source %s: adding %dx "%s" failed (%s). The parcel is still in the inventory.'):format(
             boxItem, tostring(source), failed.qty, tostring(failed.name),
             PPBridge.canCarry(source, failed.name, failed.qty)
                 and 'the inventory refused it - is that item defined in your inventory config?'
-                or 'the inventory is too full or too heavy',
-            restored and 'The parcel was put back in the inventory.' or 'WARNING: the parcel could not be put back - restore it for this player by hand.'))
+                or 'the inventory is too full or too heavy'))
         PP.cantCarry(source)
+        return false
+    end
+
+    if not removeBox() then
+        rollback() -- never hand over the contents and keep the box too
+        print(('[as-postalprime] could not take the %s out of source %s\'s inventory, so it was not opened.'):format(boxItem, tostring(source)))
         return false
     end
 
@@ -393,6 +398,7 @@ for _, size in ipairs({ 's', 'm', 'l', 'xl' }) do
             if removeSelf then return removeSelf() end
             return PPBridge.removeItem(source, boxItem, 1)
         end
-        openParcelBox(source, meta, boxItem, removeBox)
+        -- false = it could not be opened: tell the inventory not to use up the box.
+        return openParcelBox(source, meta, boxItem, removeBox)
     end)
 end
