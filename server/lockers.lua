@@ -336,13 +336,28 @@ end)
 -- Opening a pp_parcel_s/m/l/xl box: unpack the real items from its metadata, remove the (one) box
 -- item itself, then let the player know. Registered for all four sizes since they all behave the
 -- same way - only the box's own weight/label differs.
--- Opens a sealed parcel as one all-or-nothing step so a parcel can never be lost:
---   1. add every item, checking each add really worked (the box is still in the inventory at this point);
---   2. only then remove the box from ITS OWN slot;
---   3. if anything fails, take back whatever was added and leave the box exactly where it was, then say why - as a
---      toast to the player and a line in the server console naming the item and the reason.
--- The order matters: ox_inventory itself acts on the used slot right after the item's export returns, so the box's slot
--- must not be freed (and reused by one of the new items) before then, or the inventory would take the new item back.
+-- Opens a sealed parcel as one all-or-nothing step so a parcel can never be lost. Two orders are tried:
+--   A. (preferred) add every item while the box is still in its slot, then remove the box from that slot. If anything
+--      fails the added items are taken back and the box was never touched.
+--   B. (when A doesn't fit - a full inventory by weight or by slots, where the box's own slot/weight is what is in the
+--      way) take the box out FIRST, then add every item; if that fails too, take the items back and put the box back
+--      with its contents.
+-- Either way the use handler returns false, which tells ox_inventory not to consume anything itself: it acts on the
+-- used slot right after the export returns, and with order B that slot may by then hold one of the new items.
+-- Everything is reported to the player (toast) and to the server console (the item and the reason).
+local function tryAdd(source, contents)
+    local added, failed = {}, nil
+    for _, c in ipairs(contents) do
+        if not PPBridge.addItem(source, c.name, c.qty, c.metadata) then failed = c break end
+        added[#added + 1] = c
+    end
+    return added, failed
+end
+
+local function takeBack(source, added)
+    for _, c in ipairs(added) do PPBridge.removeItem(source, c.name, c.qty) end
+end
+
 local function openParcelBox(source, meta, boxItem, removeBox)
     if type(meta) ~= 'table' or type(meta.items) ~= 'table' or #meta.items == 0 then
         print(('[as-postalprime] a %s was used by source %s but has no contents in its metadata, so there is nothing to unpack (a box given out before giveBoxItem was turned on, or the inventory dropped its metadata).'):format(boxItem, tostring(source)))
@@ -356,37 +371,43 @@ local function openParcelBox(source, meta, boxItem, removeBox)
         contents[#contents + 1] = { name = entry and entry.item or it.item or it.id, qty = tonumber(it.qty) or 1, metadata = it.metadata }
     end
 
-    local added, failed = {}, nil
-    for _, c in ipairs(contents) do
-        if not PPBridge.addItem(source, c.name, c.qty, c.metadata) then failed = c break end
-        added[#added + 1] = c
-    end
-
-    local function rollback()
-        for _, c in ipairs(added) do PPBridge.removeItem(source, c.name, c.qty) end
-    end
-
-    if failed then
-        rollback()
-        print(('[as-postalprime] could not unpack %s for source %s: adding %dx "%s" failed (%s). The parcel is still in the inventory.'):format(
-            boxItem, tostring(source), failed.qty, tostring(failed.name),
-            PPBridge.canCarry(source, failed.name, failed.qty)
-                and 'the inventory refused it - is that item defined in your inventory config?'
-                or 'the inventory is too full or too heavy'))
-        PP.cantCarry(source)
-        return false
-    end
-
-    if not removeBox() then
-        rollback() -- never hand over the contents and keep the box too
+    -- A: contents first, box still in place.
+    local added, failed = tryAdd(source, contents)
+    if not failed then
+        if removeBox() then
+            TriggerClientEvent('as-postalprime:toast', source, { title = T('app.name'), description = T('toast.parcelOpened'), type = 'success' })
+            return true
+        end
+        takeBack(source, added) -- never hand over the contents and keep the box too
         print(('[as-postalprime] could not take the %s out of source %s\'s inventory, so it was not opened.'):format(boxItem, tostring(source)))
         return false
     end
+    takeBack(source, added)
 
-    TriggerClientEvent('as-postalprime:toast', source, {
-        title = T('app.name'), description = T('toast.parcelOpened'), type = 'success',
-    })
-    return true
+    -- B: the contents don't fit with the box in the way - take the box out first.
+    if not removeBox() then
+        print(('[as-postalprime] could not unpack %s for source %s: adding %dx "%s" failed and the box could not be removed to make room.'):format(boxItem, tostring(source), failed.qty, tostring(failed.name)))
+        PP.cantCarry(source)
+        return false
+    end
+    local added2, failed2 = tryAdd(source, contents)
+    if not failed2 then
+        print(('[as-postalprime] unpacked %s for source %s after freeing the box\'s own slot/weight (the inventory is nearly full).'):format(boxItem, tostring(source)))
+        TriggerClientEvent('as-postalprime:toast', source, { title = T('app.name'), description = T('toast.parcelOpened'), type = 'success' })
+        return true
+    end
+
+    -- Still doesn't fit: undo everything and give the player their box back.
+    takeBack(source, added2)
+    local restored = PPBridge.addItem(source, boxItem, 1, meta)
+    print(('[as-postalprime] could not unpack %s for source %s: adding %dx "%s" failed (%s). %s'):format(
+        boxItem, tostring(source), failed2.qty, tostring(failed2.name),
+        PPBridge.canCarry(source, failed2.name, failed2.qty)
+            and 'the inventory refused it - is that item defined in your inventory config?'
+            or 'the inventory is too full or too heavy',
+        restored and 'The parcel was put back in the inventory.' or 'WARNING: the parcel could not be put back - restore it for this player by hand.'))
+    PP.cantCarry(source)
+    return false
 end
 
 for _, size in ipairs({ 's', 'm', 'l', 'xl' }) do
@@ -398,7 +419,12 @@ for _, size in ipairs({ 's', 'm', 'l', 'xl' }) do
             if removeSelf then return removeSelf() end
             return PPBridge.removeItem(source, boxItem, 1)
         end
-        -- false = it could not be opened: tell the inventory not to use up the box.
-        return openParcelBox(source, meta, boxItem, removeBox)
+        local ok, err = pcall(openParcelBox, source, meta, boxItem, removeBox)
+        if not ok then
+            print(('[as-postalprime] error while opening %s for source %s: %s'):format(boxItem, tostring(source), tostring(err)))
+            PP.cantCarry(source)
+        end
+        -- Always false: we did (or declined) the whole job ourselves, so the inventory must not consume anything.
+        return false
     end)
 end
