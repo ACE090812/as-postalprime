@@ -242,7 +242,8 @@ function PPBridge.registerUsable(itemName, handler)
             if type(src) ~= 'number' then return end
             local s = exports.ox_inventory:GetSlot(src, slot)
             local function removeSelf()
-                pcall(function() exports.ox_inventory:RemoveItem(src, itemName, 1, nil, slot) end)
+                local ok, removed = pcall(function() return exports.ox_inventory:RemoveItem(src, itemName, 1, nil, slot) end)
+                return ok and removed and true or false
             end
             handler(src, (s and s.metadata) or {}, removeSelf)
         end)
@@ -259,7 +260,8 @@ function PPBridge.registerUsable(itemName, handler)
     end
     local function qbHandler(source, item)
         local function removeSelf()
-            pcall(function() exports['qb-inventory']:RemoveItem(source, itemName, 1, item and item.slot) end)
+            local ok, removed = pcall(function() return exports['qb-inventory']:RemoveItem(source, itemName, 1, item and item.slot) end)
+            return ok and removed ~= false
         end
         handler(source, (item and item.info) or {}, removeSelf)
     end

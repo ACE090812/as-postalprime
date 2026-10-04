@@ -676,4 +676,5 @@ Locales['fr'] = {
     ['app.toast.extended'] = 'Location prolongée',
     ['app.toast.newCode'] = 'Nouveau code défini',
     ['app.toast.shopSaved'] = 'Boutique enregistrée',
+    ['toast.parcelEmpty'] = 'Ce colis est vide ou abîmé - demande de l\'aide au personnel.',
 }

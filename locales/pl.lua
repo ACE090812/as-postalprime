@@ -676,4 +676,5 @@ Locales['pl'] = {
     ['app.toast.extended'] = 'Wynajem przedłużony',
     ['app.toast.newCode'] = 'Ustawiono nowy kod',
     ['app.toast.shopSaved'] = 'Sklep zapisany',
+    ['toast.parcelEmpty'] = 'Ta paczka jest pusta lub uszkodzona - poproś o pomoc obsługę.',
 }

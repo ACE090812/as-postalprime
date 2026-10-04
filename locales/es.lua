@@ -676,4 +676,5 @@ Locales['es'] = {
     ['app.toast.extended'] = 'Alquiler ampliado',
     ['app.toast.newCode'] = 'Nuevo código establecido',
     ['app.toast.shopSaved'] = 'Tienda guardada',
+    ['toast.parcelEmpty'] = 'Este paquete está vacío o dañado: pide ayuda al personal.',
 }

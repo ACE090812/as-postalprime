@@ -678,4 +678,5 @@ Locales['en'] = {
     ['app.toast.extended'] = 'Rental extended',
     ['app.toast.newCode'] = 'New code set',
     ['app.toast.shopSaved'] = 'Storefront saved',
+    ['toast.parcelEmpty'] = 'This parcel is empty or damaged - ask staff for help.',
 }
