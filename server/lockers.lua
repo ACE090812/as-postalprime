@@ -342,8 +342,10 @@ end)
 --   B. (when A doesn't fit - a full inventory by weight or by slots, where the box's own slot/weight is what is in the
 --      way) take the box out FIRST, then add every item; if that fails too, take the items back and put the box back
 --      with its contents.
--- Either way the use handler returns false, which tells ox_inventory not to consume anything itself: it acts on the
--- used slot right after the export returns, and with order B that slot may by then hold one of the new items.
+-- ox_inventory acts on the used slot right after the export returns (it consumes the box unless the item is defined with
+-- consume = 0). After a plain success the box is already gone from that slot, so the handler just returns. After order B
+-- that slot may hold one of the new items, and after a failure the box must stay - there the handler returns false, which
+-- cancels the use, so the inventory consumes nothing.
 -- Everything is reported to the player (toast) and to the server console (the item and the reason).
 local function tryAdd(source, contents)
     local added, failed = {}, nil
@@ -376,6 +378,7 @@ local function openParcelBox(source, meta, boxItem, removeBox)
     if not failed then
         if removeBox() then
             TriggerClientEvent('as-postalprime:toast', source, { title = T('app.name'), description = T('toast.parcelOpened'), type = 'success' })
+            print(('[as-postalprime] opened %s for source %s (%d item(s))'):format(boxItem, tostring(source), #added))
             return true
         end
         takeBack(source, added) -- never hand over the contents and keep the box too
@@ -392,9 +395,9 @@ local function openParcelBox(source, meta, boxItem, removeBox)
     end
     local added2, failed2 = tryAdd(source, contents)
     if not failed2 then
-        print(('[as-postalprime] unpacked %s for source %s after freeing the box\'s own slot/weight (the inventory is nearly full).'):format(boxItem, tostring(source)))
+        print(('[as-postalprime] opened %s for source %s after freeing the box\'s own slot/weight (the inventory is nearly full)'):format(boxItem, tostring(source)))
         TriggerClientEvent('as-postalprime:toast', source, { title = T('app.name'), description = T('toast.parcelOpened'), type = 'success' })
-        return true
+        return 'freed'
     end
 
     -- Still doesn't fit: undo everything and give the player their box back.
@@ -419,12 +422,18 @@ for _, size in ipairs({ 's', 'm', 'l', 'xl' }) do
             if removeSelf then return removeSelf() end
             return PPBridge.removeItem(source, boxItem, 1)
         end
-        local ok, err = pcall(openParcelBox, source, meta, boxItem, removeBox)
+        local ok, result = pcall(openParcelBox, source, meta, boxItem, removeBox)
         if not ok then
-            print(('[as-postalprime] error while opening %s for source %s: %s'):format(boxItem, tostring(source), tostring(err)))
+            print(('[as-postalprime] error while opening %s for source %s: %s'):format(boxItem, tostring(source), tostring(result)))
             PP.cantCarry(source)
+            return false
         end
-        -- Always false: we did (or declined) the whole job ourselves, so the inventory must not consume anything.
-        return false
+        if result == true then return end                                   -- plain success: same as always
+        if result == 'freed' then
+            -- the box's slot now holds a new item; stop the inventory consuming it (unless it never consumes: consume = 0)
+            if PPBridge.itemConsumes(boxItem) then return false end
+            return
+        end
+        return false                                                        -- could not open: leave the box alone
     end)
 end

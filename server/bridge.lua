@@ -149,6 +149,15 @@ end
 function PPBridge.inventoryName() return inventory end
 function PPBridge.frameworkName() return framework end
 
+-- Will the inventory use the item up by itself after the use handler returns? (ox_inventory does, unless the item is
+-- defined with consume = 0; the other inventories are handled entirely by our own removal.)
+function PPBridge.itemConsumes(item)
+    if inventory ~= 'ox_inventory' then return false end
+    local ok, def = pcall(function() return exports.ox_inventory:Items(item) end)
+    if not ok or type(def) ~= 'table' then return true end -- unknown: assume it does (the safe assumption)
+    return def.consume ~= 0
+end
+
 function PPBridge.getItemCount(source, item)
     if inventory == 'ox_inventory' then
         local ok, count = pcall(function() return exports.ox_inventory:Search(source, 'count', item) end)
